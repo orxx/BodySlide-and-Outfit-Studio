@@ -1,18 +1,20 @@
 #pragma once
 
 #include "resource.h"
-#include "slidermanager.h"
 #include <wx/wxprec.h>
 #include <wx/srchctrl.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/imagpng.h>
 #include <wx/dcbuffer.h>
 #include <wx/statline.h>
+#include "wx/tokenzr.h"
+
 
 #include <vector>
 #include <string>
 #include <map>
 #include <tuple>
+#include <regex>
 
 #include "Commctrl.h"
 #include <string.h>
@@ -20,8 +22,12 @@
 #include "DiffData.h"
 #include "SliderData.h"
 #include "OutfitStudio.h"
+#include "SliderManager.h"
 #include "SliderGroup.h"
 #include "SliderCategories.h"
+#include "ConfigurationManager.h"
+#include "PresetSaveDialog.h"
+#include "TriFile.h"
 
 
 class BodySlideFrame;
@@ -136,6 +142,7 @@ public:
 	void LaunchOutfitStudio();
 
 	void ApplySliders(const string& targetShape, vector<Slider>& sliderSet, vector<vec3>& verts, vector<ushort>& zapidx, vector<vec2>* uvs = NULL);
+	int WriteMorphTRI(const string& triPath, SliderSet& sliderSet, NifFile& nif, unordered_map<string, vector<ushort>> zapIndices);
 
 	void ShowPreview(char PreviewType = SMALL_PREVIEW);
 	void ClosePreview(char PreviewType = SMALL_PREVIEW) {
@@ -168,8 +175,8 @@ public:
 
 	int BlenderNifToSkyrim();
 	
-	int BuildBodies(bool localPath = false, bool clean = false);
-	int BuildListBodies(const vector<string>& outfitList, map<string,string>& failedOutfits, bool remove = false, const string& custPath = "");
+	int BuildBodies(bool localPath = false, bool clean = false, bool tri = false);
+	int BuildListBodies(const vector<string>& outfitList, map<string, string>& failedOutfits, bool remove = false, bool tri = false, const string& custPath = "");
 	
 	float GetSliderValue(const wxString& sliderName, bool isLo);
 	void SetSliderValue(const wxString& sliderName, bool isLo, float val);

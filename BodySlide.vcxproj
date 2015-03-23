@@ -46,6 +46,7 @@
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
     <IntDir>$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
+    <TargetName>$(ProjectName) Debug</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
@@ -137,6 +138,7 @@
     <ClCompile Include="tinyxml.cpp" />
     <ClCompile Include="tinyxmlerror.cpp" />
     <ClCompile Include="tinyxmlparser.cpp" />
+    <ClCompile Include="TriFile.cpp" />
     <ClCompile Include="TweakBrush.cpp" />
     <ClCompile Include="wxStateButton.cpp" />
   </ItemGroup>
@@ -169,6 +171,7 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="tinystr.h" />
     <ClInclude Include="tinyxml.h" />
+    <ClInclude Include="TriFile.h" />
     <ClInclude Include="TweakBrush.h" />
     <ClInclude Include="wxStateButton.h" />
   </ItemGroup>

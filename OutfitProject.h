@@ -136,7 +136,6 @@ public:
 	void SetOutfitTextures(const string& textureFile);
 	void SetOutfitTexture(const string& shapeName, const string& textureFile);
 	void SetRefTexture(const string& shapeName, const string& textureFile);
-	void SetOutfitShapeGameTexPaths (const string& shapeName, unordered_map<int, string>& gameTexPaths);
 
 	int RefShapeShaderType(const string& shapeName) {
 		auto s = baseNif.GetShaderForShape((string)shapeName);
@@ -162,6 +161,7 @@ public:
 	void RefreshMorphOutfitShape(const string& shapeName, bool bIsOutfit = true);
 	void UpdateShapeFromMesh(const string& shapeName, const mesh* m, bool IsOutfit);
 	void UpdateMorphResult(const string& shapeName, const string& sliderName, unordered_map<int, vector3>& vertUpdates, bool IsOutfit);
+	void MoveVertex(const string& shapeName, vec3& pos, int& id, bool IsOutfit);
 	void OffsetShape(const string& shapeName, vec3& xlate, bool IsOutfit, unordered_map<int, float>* mask = NULL);
 	void ScaleShape(const string& shapeName, float& scale, bool IsOutfit, unordered_map<int, float>* mask = NULL);
 	void RotateShape(const string& shapeName, vec3& angle, bool IsOutfit, unordered_map<int, float>* mask = NULL);

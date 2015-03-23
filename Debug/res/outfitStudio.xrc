@@ -466,7 +466,7 @@
 					<label>Mask Weighted Vertices</label>
 					<help>Masks vertices with bone weights, so you can manually assign weights to unweighted vertices.</help>
 				</object>
-				<object class="wxMenuItem" name="buildSkinParitions">
+				<object class="wxMenuItem" name="buildSkinPartitions">
 					<label>Build Skin Partitions</label>
 					<help>Creates or rebuilds skin partitions for the current shape. This is typically not needed, use only if skin partitions are broken.</help>
 				</object>        
@@ -597,19 +597,19 @@
 					<help>Configure current brush settings.</help>
 				</object>
 				<object class="wxMenuItem" name="btnIncreaseSize">
-					<label>Increase Brush Size\t=</label>
+					<label>Increase Brush Size\tShift++</label>
 					<help>Increase brush diameter</help>
 				</object>
 				<object class="wxMenuItem" name="btnDecreaseSize">
-					<label>Decrease Brush Size\t-</label>
+					<label>Decrease Brush Size\tShift+-</label>
 					<help>Decrease brush diameter</help>
 				</object>
 				<object class="wxMenuItem" name="btnIncreaseStr">
-					<label>Increase Brush Strength\t]</label>
+					<label>Increase Brush Strength\tCtrl++</label>
 					<help>Increase brush strength</help>
 				</object>
 				<object class="wxMenuItem" name="btnDecreaseStr">
-					<label>Decrease Brush Strength\t[</label>
+					<label>Decrease Brush Strength\tCtrl+-</label>
 					<help>Decrease brush strength</help>
 				</object>
 				<object class="separator" />
@@ -623,7 +623,7 @@
 				</object>
 				<object class="wxMenuItem" name="btnShowMask">
 					<label>Show Mask\tM</label>
-					<help>Shade meshes to indcate areas that are currently masked.</help>
+					<help>Shade meshes to indicate areas that are currently masked.</help>
 					<checked>1</checked>
 					<checkable>1</checkable>
 				</object>
@@ -1077,6 +1077,111 @@
             <flag>wxALL</flag>
             <border>5</border>
             <object class="wxTextCtrl" name="angleZ">
+              <value>0.0</value>
+            </object>
+          </object>
+        </object>
+      </object>
+      <object class="sizeritem">
+        <option>1</option>
+        <flag>wxEXPAND|wxALL</flag>
+        <border>5</border>
+        <object class="wxStdDialogButtonSizer">
+          <object class="button">
+            <flag>wxALIGN_CENTER_HORIZONTAL|wxALL</flag>
+            <border>5</border>
+            <object class="wxButton" name="wxID_OK">
+              <label>&amp;OK</label>
+            </object>
+          </object>
+          <object class="button">
+            <flag>wxALIGN_CENTER_HORIZONTAL|wxALL</flag>
+            <border>5</border>
+            <object class="wxButton" name="wxID_CANCEL">
+              <label>&amp;Cancel</label>
+            </object>
+          </object>
+        </object>
+      </object>
+    </object>
+  </object>
+  
+  <object class="wxDialog" name="dlgMoveVertex">
+    <style>wxCAPTION|wxDEFAULT_DIALOG_STYLE</style>
+    <size>423,155</size>
+    <title>Apply a vertex position</title>
+    <centered>1</centered>
+    <object class="wxBoxSizer">
+      <orient>wxVERTICAL</orient>
+      <object class="sizeritem">
+        <option>0</option>
+        <flag>wxALL|wxEXPAND</flag>
+        <border>5</border>
+        <object class="wxStaticText" name="m_staticText32">
+          <label>This permanently moves a single vertex straight to the given location.</label>
+          <wrap>400</wrap>
+        </object>
+      </object>
+      <object class="sizeritem">
+        <option>0</option>
+        <flag>wxEXPAND</flag>
+        <border>5</border>
+        <object class="wxBoxSizer">
+          <orient>wxHORIZONTAL</orient>
+          <object class="spacer">
+            <option>1</option>
+            <flag>wxEXPAND</flag>
+            <border>5</border>
+            <size>0,0</size>
+          </object>
+          <object class="sizeritem">
+            <option>0</option>
+            <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+            <border>5</border>
+            <object class="wxStaticText" name="m_staticText3">
+              <label>X</label>
+              <wrap>-1</wrap>
+            </object>
+          </object>
+          <object class="sizeritem">
+            <option>0</option>
+            <flag>wxALL</flag>
+            <border>5</border>
+            <object class="wxTextCtrl" name="posX">
+              <value>0.0</value>
+            </object>
+          </object>
+          <object class="sizeritem">
+            <option>0</option>
+            <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+            <border>5</border>
+            <object class="wxStaticText" name="m_staticText4">
+              <label>Y</label>
+              <wrap>-1</wrap>
+            </object>
+          </object>
+          <object class="sizeritem">
+            <option>0</option>
+            <flag>wxALL</flag>
+            <border>5</border>
+            <object class="wxTextCtrl" name="posY">
+              <value>0.0</value>
+            </object>
+          </object>
+          <object class="sizeritem">
+            <option>0</option>
+            <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+            <border>5</border>
+            <object class="wxStaticText" name="m_staticText5">
+              <label>Z</label>
+              <wrap>-1</wrap>
+            </object>
+          </object>
+          <object class="sizeritem">
+            <option>0</option>
+            <flag>wxALL</flag>
+            <border>5</border>
+            <object class="wxTextCtrl" name="posZ">
               <value>0.0</value>
             </object>
           </object>
@@ -1640,7 +1745,7 @@
             <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
             <border>5</border>
             <object class="wxStaticText" name="m_staticText13">
-              <label>Outfit Studio Texture:</label>
+              <label>Display Texture:</label>
               <wrap>-1</wrap>
             </object>
           </object>
@@ -1672,6 +1777,15 @@
         <object class="wxGrid" name="stTexGrid">
           <style>wxALWAYS_SHOW_SB</style>
 		  <size>446,236</size>
+        </object>
+      </object>
+      <object class="sizeritem">
+        <option>0</option>
+        <flag>wxALL|wxEXPAND</flag>
+        <border>5</border>
+        <object class="wxButton" name="btApplyDiffuse">
+          <tooltip>Applies the current diffuse texture path to the Outfit Studio display texture path.</tooltip>						
+          <label>Apply Diffuse</label>
         </object>
       </object>
       <object class="sizeritem">
@@ -2250,7 +2364,11 @@
       <label>Copy Bone Weights</label>
       <help>Copies all bone weights from the reference shape to this shape.</help>
     </object>
-    <object class="wxMenuItem" name="buildSkinParitions">
+    <object class="wxMenuItem" name="copySelectedWeight">
+      <label>Copy Selected Weights</label>
+      <help>Copies selected bone weights from the reference shape to the current shape.</help>
+    </object>
+    <object class="wxMenuItem" name="buildSkinPartitions">
       <label>Build Skin Partitions</label>
       <help>Creates or rebuilds skin partitions for this shape. </help>
     </object>
@@ -2477,7 +2595,7 @@
       <growablerows></growablerows>
       <object class="sizeritem">
         <option>0</option>
-        <flag>wxALL</flag>
+        <flag>wxALIGN_CENTER|wxALL</flag>
         <border>5</border>
         <object class="wxStaticText" name="m_staticText1">
           <label>Size</label>
@@ -2490,25 +2608,24 @@
         <border>5</border>
         <object class="wxSlider" name="slideSize">
           <style>wxSL_BOTH|wxSL_HORIZONTAL</style>
-          <size>300,20</size>
-          <value>50</value>
+          <size>450,25</size>
+          <value>0</value>
           <min>0</min>
-          <max>400</max>
+          <max>1000</max>
         </object>
       </object>
       <object class="sizeritem">
         <option>0</option>
-        <flag>wxALL</flag>
+        <flag>wxALIGN_CENTER|wxALL</flag>
         <border>5</border>
         <object class="wxStaticText" name="valSize">
-          <size>30,20</size>
-          <label>0</label>
+          <label>1.000</label>
           <wrap>-1</wrap>
         </object>
       </object>
       <object class="sizeritem">
         <option>0</option>
-        <flag>wxALL</flag>
+        <flag>wxALIGN_CENTER|wxALL</flag>
         <border>5</border>
         <object class="wxStaticText" name="m_staticText2">
           <label>Strength</label>
@@ -2521,15 +2638,15 @@
         <border>5</border>
         <object class="wxSlider" name="slideStr">
           <style>wxSL_BOTH|wxSL_HORIZONTAL</style>
-          <size>200,20</size>
-          <value>50</value>
+          <size>450,25</size>
+          <value>0</value>
           <min>0</min>
-          <max>100</max>
+          <max>1000</max>
         </object>
       </object>
       <object class="sizeritem">
         <option>0</option>
-        <flag>wxALL</flag>
+        <flag>wxALIGN_CENTER|wxALL</flag>
         <border>5</border>
         <object class="wxStaticText" name="valStr">
           <label>0</label>
@@ -2538,7 +2655,7 @@
       </object>
       <object class="sizeritem">
         <option>0</option>
-        <flag>wxALL</flag>
+        <flag>wxALIGN_CENTER|wxALL</flag>
         <border>5</border>
         <object class="wxStaticText" name="lblslideFocus">
           <label>Focus</label>
@@ -2551,15 +2668,15 @@
         <border>5</border>
         <object class="wxSlider" name="slideFocus">
           <style>wxSL_BOTH|wxSL_HORIZONTAL</style>
-          <size>200,20</size>
-          <value>100</value>
+          <size>450,25</size>
+          <value>0</value>
           <min>0</min>
-          <max>500</max>
+          <max>1000</max>
         </object>
       </object>
       <object class="sizeritem">
         <option>0</option>
-        <flag>wxALL</flag>
+        <flag>wxALIGN_CENTER|wxALL</flag>
         <border>5</border>
         <object class="wxStaticText" name="valFocus">
           <label>0</label>
@@ -2568,7 +2685,7 @@
       </object>
       <object class="sizeritem">
         <option>0</option>
-        <flag>wxALL</flag>
+        <flag>wxALIGN_CENTER|wxALL</flag>
         <border>5</border>
         <object class="wxStaticText" name="lblslideSpace">
           <label>Spacing</label>
@@ -2581,15 +2698,15 @@
         <border>5</border>
         <object class="wxSlider" name="slideSpace">
           <style>wxSL_BOTH|wxSL_HORIZONTAL</style>
-          <size>200,20</size>
-          <value>50</value>
+          <size>450,25</size>
+          <value>0</value>
           <min>0</min>
-          <max>100</max>
+          <max>1000</max>
         </object>
       </object>
       <object class="sizeritem">
         <option>0</option>
-        <flag>wxALL</flag>
+        <flag>wxALIGN_CENTER|wxALL</flag>
         <border>5</border>
         <object class="wxStaticText" name="valSpace">
           <label>0</label>

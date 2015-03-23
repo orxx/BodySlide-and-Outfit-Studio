@@ -75,20 +75,21 @@ int NifFile::shapeDataIdForName(const string& name, int& outBlockType) {
 
 
 int NifFile::shapeIdForName(const string& name) {
-	for(int i =0 ;i<hdr.numBlocks;i++) {
-		if(blocks[i]->blockType == NIFBLOCK_TRISHAPE) {
+	for (int i = 0; i < hdr.numBlocks; i++) {
+		if (blocks[i]->blockType == NIFBLOCK_TRISHAPE) {
 			auto shape = (NifBlockTriShape*)blocks[i];
-			if(!name.compare(shape->shapeName))
+			if (!name.compare(shape->shapeName))
 				return (i);
-		} 
-		else if(blocks[i]->blockType == NIFBLOCK_TRISTRIPS) {
+		}
+		else if (blocks[i]->blockType == NIFBLOCK_TRISTRIPS) {
 			auto shape = (NifBlockTriStrips*)blocks[i];
-			if(!name.compare(shape->shapeName))
+			if (!name.compare(shape->shapeName))
 				return (i);
-		} 
+		}
 	}
 	return -1;
 }
+
 NifBlockNiNode* NifFile::nodeForName(const string& name) {
 	NifBlockNiNode* node;
 	for(int i =0 ;i<hdr.numBlocks;i++) {
@@ -189,6 +190,9 @@ void NifFile::CopyFrom(NifFile& other) {
 				break;
 			case NIFBLOCK_BSSHADERTEXSET:
 				nb = new NifBlockBSShaderTextureSet((*(NifBlockBSShaderTextureSet*)other.blocks[i]));
+				break;
+			case NIFBLOCK_STRINGEXTRADATA:
+				nb = new NifBlockStringExtraData((*(NifBlockStringExtraData*)other.blocks[i]));
 		}
 		blocks.push_back(nb);
 	}
@@ -205,7 +209,7 @@ void NifFile::Clear() {
 	isValid = false;
 }
 
-int NifFile::Load(const string& filename) { 
+int NifFile::Load(const string& filename) {
 	int i;
 	NifBlock *block;
 	string thisBlockTypeStr;
@@ -215,9 +219,10 @@ int NifFile::Load(const string& filename) {
 	if (file.is_open()) {
 		if (filename.rfind("\\") != string::npos)
 			fileName = filename.substr(filename.rfind("\\"));
-		else fileName = filename;
+		else
+			fileName = filename;
 		hdr.Get(file, hdr);
-		if (hdr.verStr[0] == 0) {			
+		if (hdr.verStr[0] == 0) {
 			isValid = false;
 			return 1;
 		}
@@ -225,50 +230,67 @@ int NifFile::Load(const string& filename) {
 
 		for (i = 0; i < hdr.numBlocks; i++) {
 			thisBlockTypeId = hdr.blockIndex[i];
-			thisBlockTypeStr= hdr.blockTypes[thisBlockTypeId].str;
+			thisBlockTypeStr = hdr.blockTypes[thisBlockTypeId].str;
 			if (!thisBlockTypeStr.compare("NiTriShapeData")) {
 				block = (NifBlock*) new NifBlockTriShapeData(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else if (!thisBlockTypeStr.compare("NiTriShape")) {
+			}
+			else if (!thisBlockTypeStr.compare("NiTriShape")) {
 				block = (NifBlock*) new NifBlockTriShape(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else if (!thisBlockTypeStr.compare("NiTriStrips")) {
+			}
+			else if (!thisBlockTypeStr.compare("NiTriStrips")) {
 				block = (NifBlock*) new NifBlockTriStrips(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else if (!thisBlockTypeStr.compare("NiTriStripsData")) {
+			}
+			else if (!thisBlockTypeStr.compare("NiTriStripsData")) {
 				block = (NifBlock*) new NifBlockTriStripsData(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else if (!thisBlockTypeStr.compare("BSDismemberSkinInstance")) {
+			}
+			else if (!thisBlockTypeStr.compare("BSDismemberSkinInstance")) {
 				block = (NifBlock*) new NifBlockBSDismemberment(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else if (!thisBlockTypeStr.compare("NiNode")) {
+			}
+			else if (!thisBlockTypeStr.compare("NiNode")) {
 				block = (NifBlock*) new NifBlockNiNode(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else if (!thisBlockTypeStr.compare("NiSkinData")) {
+			}
+			else if (!thisBlockTypeStr.compare("NiSkinData")) {
 				block = (NifBlock*) new NifBlockNiSkinData(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else if (!thisBlockTypeStr.compare("NiSkinPartition")) {
+			}
+			else if (!thisBlockTypeStr.compare("NiSkinPartition")) {
 				block = (NifBlock*) new NifBlockNiSkinPartition(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else if (!thisBlockTypeStr.compare("NiSkinInstance")) {
+			}
+			else if (!thisBlockTypeStr.compare("NiSkinInstance")) {
 				block = (NifBlock*) new NifBlockNiSkinInstance(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else if (!thisBlockTypeStr.compare("BSLightingShaderProperty")) {
+			}
+			else if (!thisBlockTypeStr.compare("BSLightingShaderProperty")) {
 				block = (NifBlock*) new NifBlockBSLightShadeProp(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else if (!thisBlockTypeStr.compare("BSShaderTextureSet")) {
+			}
+			else if (!thisBlockTypeStr.compare("BSShaderTextureSet")) {
 				block = (NifBlock*) new NifBlockBSShaderTextureSet(file, hdr);
 				block->SetBlockSize(hdr.blockSizes[i]);
-			} else {
+			}
+			else if (!thisBlockTypeStr.compare("NiStringExtraData")) {
+				block = (NifBlock*) new NifBlockStringExtraData(file, hdr);
+				block->SetBlockSize(hdr.blockSizes[i]);
+			}
+			else {
 				block = (NifBlock*) new NifBlockUnknown(file, hdr.blockSizes[i]);
 			}
 			blocks.push_back(block);
 		}
 		file.close();
-	} else {
+	}
+	else {
 		isValid = false;
 		return 1;
 	}
+	TrimTexturePaths();
 	isValid = true;
 	return 0;
 }
@@ -345,7 +367,7 @@ int NifFile::AddNode(const string& nodeName, vector<vector3>& rot, vector3& tran
 	newNode->nameID = AddOrFindStringId(nodeName);
 	newNode->nodeName = nodeName;
 
-	int newNodeId=AddBlock(newNode, "NiNode");
+	int newNodeId = AddBlock(newNode, "NiNode");
 	if (newNodeId != -1) {
 		NifBlockNiNode* rootNode = (NifBlockNiNode*)blocks[0];
 		rootNode->children.push_back(newNodeId);
@@ -358,11 +380,45 @@ int NifFile::AddNode(const string& nodeName, vector<vector3>& rot, vector3& tran
 
 string NifFile::NodeName(int blockID) {
 	NifBlockNiNode* n = dynamic_cast<NifBlockNiNode*>(blocks[blockID]);
-	if(!n) return "";
-	if(n->nodeName.empty()) {
+	if (!n) return "";
+	if (n->nodeName.empty()) {
 		return "_unnamed_";
 	}
 	return n->nodeName;
+}
+
+int NifFile::AddStringExtraData(const string& shapeName, const string& name, const string& stringData) {
+	NifBlockStringExtraData* strExtraData = new NifBlockStringExtraData();
+	strExtraData->nameID = AddOrFindStringId(name);
+	strExtraData->name = name;
+	strExtraData->stringDataId = AddOrFindStringId(stringData);
+	strExtraData->stringData = stringData;
+	//strExtraData->bytesRemaining = stringData.size() + 4;
+
+	int strExtraDataId = AddBlock(strExtraData, "NiStringExtraData");
+	if (strExtraDataId != -1) {
+		int id = shapeIdForName(shapeName);
+		if (id == -1)
+			return -1;
+
+		NifBlockTriShape* shape = shapeForName(shapeName);
+		if (shape) {
+			shape->extradata.push_back(strExtraDataId);
+			shape->numExtra++;
+			shape->SetBlockSize(shape->CalcBlockSize() + 4);
+			hdr.blockSizes[id] = shape->CalcBlockSize();
+		}
+		else {
+			NifBlockTriStrips* strips = stripsForName(shapeName);
+			if (!strips)
+				return -1;
+			strips->extradata.push_back(strExtraDataId);
+			strips->numExtra++;
+			strips->SetBlockSize(strips->CalcBlockSize() + 4);
+			hdr.blockSizes[id] = strips->CalcBlockSize();
+		}
+	}
+	return strExtraDataId;
 }
 
 NifBlockBSLightShadeProp* NifFile::GetShader(string& shaderName) {
@@ -420,6 +476,25 @@ void NifFile::SetTextureForShape(string& shapeName, string& outTexFile, int texI
 		return;
 	ts->textures[texIndex].str = outTexFile;
 	hdr.blockSizes[shader->texsetRef] = ts->CalcBlockSize();
+}
+
+void NifFile::TrimTexturePaths() {
+	string tFile;
+	vector<string> shapes;
+	GetShapeList(shapes);
+
+	for (auto s : shapes) {
+		auto shader = GetShaderForShape(s);
+		if (shader) {
+			for (int i = 0; i < 9; i++) {
+				GetTextureForShape(s, tFile, i);
+				tFile = regex_replace(tFile, regex("/+|\\\\+"), "\\"); // Replace multiple slashes or forward slashes with one backslash
+				tFile = regex_replace(tFile, regex(".*textures\\\\", regex_constants::icase), ""); // Remove everything before and including the texture path
+				tFile = regex_replace(tFile, regex("AstridBody", regex_constants::icase), "femalebody_1"); // Change astrid body to femalebody_1
+				SetTextureForShape(s, tFile, i);
+			}
+		}
+	}
 }
 
 bool NifFile::HasBlockType(string typeStr) {
@@ -864,22 +939,6 @@ int NifFile::Save(const string& filename) {
 	if (file.is_open()) {
 		hdr.Put(file, hdr);
 		for (int i = 0; i < hdr.numBlocks; i++) {
-			/*
-			if (blocks[i]->blockType == NIFBLOCK_TRISHAPEDATA) {
-				((NifBlockTriShapeData*)blocks[i])->Put(file, hdr);
-			} else if (blocks[i]->blockType == NIFBLOCK_TRISHAPE) {
-				((NifBlockTriShape*)blocks[i])->Put(file, hdr);
-			} else if (blocks[i]->blockType == NIFBLOCK_NINODE) {
-				((NifBlockNiNode*)blocks[i])->Put(file, hdr);
-			} else if (blocks[i]->blockType == NIFBLOCK_BSDISMEMBER) {
-				((NifBlockBSDismemberment*)blocks[i])->Put(file);
-			} else if (blocks[i]->blockType == NIFBLOCK_NISKINPARTITION) {
-				((NifBlockNiSkinPartition*)blocks[i])->Put(file, hdr);
-			} else if (blocks[i]->blockType == NIFBLOCK_BSLGTSHADEPROP) {
-				((NifBlockBSLightShadeProp*)blocks[i])->Put(file, hdr);
-			} else {
-				((NifBlockUnknown*)blocks[i])->Put(file);
-			}*/
 			blocks[i]->Put(file, hdr);
 		}
 		uint endPad = 1;
@@ -1802,6 +1861,25 @@ void NifFile::GetShapeVirtualScale(const string& shapeName, float& scale, bool& 
 	return;
 }
 
+void NifFile::MoveVertex(const string& shapeName, const vector3& pos, const int& id) {
+	vector<vec3>* verts;
+	int btype;
+	int dataID = shapeDataIdForName(shapeName, btype);
+
+	if (dataID == -1)
+		return;
+
+	if (btype == NIFBLOCK_TRISHAPEDATA) {
+		NifBlockTriShapeData* shapeData = (NifBlockTriShapeData*)blocks[dataID];
+		verts = &shapeData->vertices;
+	}
+	else {
+		NifBlockTriStripsData* shapeData = (NifBlockTriStripsData*)blocks[dataID];
+		verts = &shapeData->vertices;
+	}
+	(*verts)[id] = pos;
+}
+
 void NifFile::OffsetShape(const string& shapeName, const vector3& offset, unordered_map<int, float>* mask) {
 	vector<vec3>* verts;
 	int btype;
@@ -1951,9 +2029,9 @@ void NifFile::DeleteShape(const string& shapeName) {
 	NifBlockTriShape* shape = shapeForName(shapeName);
 	if (!shape) {
 		NifBlockTriStrips* strips = stripsForName(shapeName);
-		if (!strips) 
+		if (!strips)
 			return;
-		
+
 		DeleteBlock(strips->dataRef);
 		if (strips->skinRef != -1) {
 			NifBlockBSDismemberment* skin = (NifBlockBSDismemberment*)GetBlock(strips->skinRef);
@@ -1971,7 +2049,11 @@ void NifFile::DeleteShape(const string& shapeName) {
 		if (strips->propertiesRef2 != -1)
 			DeleteBlock(strips->propertiesRef2);
 
-	} else {
+		for (int i = 0; i < strips->numExtra; i++)
+			DeleteBlock(strips->extradata[i]);
+
+	}
+	else {
 		DeleteBlock(shape->dataRef);
 		if (shape->skinRef != -1) {
 			NifBlockBSDismemberment* skin = (NifBlockBSDismemberment*)GetBlock(shape->skinRef);
@@ -1988,6 +2070,9 @@ void NifFile::DeleteShape(const string& shapeName) {
 		}
 		if (shape->propertiesRef2 != -1)
 			DeleteBlock(shape->propertiesRef2);
+
+		for (int i = 0; i < shape->numExtra; i++)
+			DeleteBlock(shape->extradata[i]);
 	}
 	int shapeID = shapeIdForName(shapeName);
 

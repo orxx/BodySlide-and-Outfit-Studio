@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <unordered_map>
+#include <regex>
 #include <math.h>
 #include "KDMatcher.h"
 #include "object3d.h"
@@ -19,20 +20,21 @@ using namespace std;
 #endif
 
 
-#define NIFBLOCK_HEADER			0
-#define NIFBLOCK_UNKNOWN		1
-#define NIFBLOCK_TRISHAPE		2
-#define NIFBLOCK_TRISHAPEDATA	3
-#define NIFBLOCK_NINODE			4
-#define NIFBLOCK_BSDISMEMBER	5
-#define NIFBLOCK_NISKINPARTITION 6
-#define NIFBLOCK_BSLGTSHADEPROP 7
-#define NIFBLOCK_ALPHAPROPERTY  8
-#define NIFBLOCK_NISKINDATA		9
-#define NIFBLOCK_BSSHADERTEXSET 10
-#define NIFBLOCK_TRISTRIPS		11
-#define NIFBLOCK_TRISTRIPSDATA	12
-#define NIFBLOCK_NISKININSTANCE	13
+#define NIFBLOCK_HEADER				0
+#define NIFBLOCK_UNKNOWN			1
+#define NIFBLOCK_TRISHAPE			2
+#define NIFBLOCK_TRISHAPEDATA		3
+#define NIFBLOCK_NINODE				4
+#define NIFBLOCK_BSDISMEMBER		5
+#define NIFBLOCK_NISKINPARTITION	6
+#define NIFBLOCK_BSLGTSHADEPROP		7
+#define NIFBLOCK_ALPHAPROPERTY		8
+#define NIFBLOCK_NISKINDATA			9
+#define NIFBLOCK_BSSHADERTEXSET		10
+#define NIFBLOCK_TRISTRIPS			11
+#define NIFBLOCK_TRISTRIPSDATA		12
+#define NIFBLOCK_NISKININSTANCE		13
+#define NIFBLOCK_STRINGEXTRADATA	14
 
 typedef unsigned char BYTE;
 typedef unsigned int uint;
@@ -646,6 +648,22 @@ public:
 
 };
 
+class NifBlockStringExtraData : public NifBlock {
+public:
+	uint nameID;
+	string name;
+	//int nextExtraData;
+	//uint bytesRemaining;
+	uint stringDataId;
+	string stringData;
+
+	NifBlockStringExtraData();
+	NifBlockStringExtraData(fstream& file, NifBlockHeader& hdr);
+
+	void Get(fstream& file, NifBlockHeader& hdr);
+	void Put(fstream& file, NifBlockHeader& hdr);
+};
+
 class NifFile
 {
 	string fileName;
@@ -675,6 +693,8 @@ public:
 	NifBlock* GetBlock(int blockId);	
 	int AddNode(const string& nodeName, vector<vector3>& rot, vector3& trans, float scale);
 	string NodeName(int blockID);
+
+	int AddStringExtraData(const string& shapeName, const string& name, const string& stringData);
 	
 	int Load(const string& filename);
 	int Save(const string& filename);
@@ -699,6 +719,7 @@ public:
 	NifBlockBSLightShadeProp*  GetShaderForShape(string& shapeName);
 	bool GetTextureForShape(string& shapeName, string& outTexFile, int texIndex = 0);
 	void SetTextureForShape(string& shapeName, string& inTexFile, int texIndex = 0);
+	void TrimTexturePaths();
 
 	int CopyNamedNode(string& nodeName, NifFile& srcNif);
 	void CopyShader(const string& shapeDest, string& shaderName, NifFile& srcNif, bool addAlpha);
@@ -772,6 +793,8 @@ public:
 
 	vector3 GetShapeVirtualOffset(const string& shapeName);
 	void GetShapeVirtualScale(const string& shapeName, float& scale, bool& fromCenterFlag);
+
+	void MoveVertex(const string& shapeName, const vector3& pos, const int& id);
 	void OffsetShape(const string& shapeName, const vector3& offset, unordered_map<int, float>* mask = NULL);
 	void ScaleShape(const string& shapeName, const float& scale, unordered_map<int, float>* mask = NULL);
 	void RotateShape(const string& shapeName, const vec3& angle, unordered_map<int, float>* mask = NULL);

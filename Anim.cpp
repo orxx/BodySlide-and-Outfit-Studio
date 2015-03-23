@@ -112,20 +112,19 @@ bool AnimInfo::LoadFromNif(NifFile* nif) {
 }
 
 bool AnimInfo::LoadFromNif(NifFile* nif, const string& shape) {
-	vector<string> bonenames;
+	vector<string> boneNames;
 	vector<int> boneIndices;
-	//vector<int> boneids;
-	//vector<AnimBone> tmpbonelist;
-	if (!nif->GetShapeBoneList(shape, bonenames))
+	string invalidBones = "";
+
+	if (!nif->GetShapeBoneList(shape, boneNames))
 		return false;
 
 	int slot = 0;
-	for (auto bn: bonenames) {		
+	for (auto bn : boneNames) {
 		if (!AnimSkeleton::getInstance().RefBone(bn)) {
 			AnimBone& cstm = AnimSkeleton::getInstance().AddBone(bn, true);
 			if (!cstm.isValidBone) {
-				wxMessageBox("Referenced bone not found in skeleton, skipping: " + bn, "Invalid Bone");
-				continue;
+				invalidBones += bn + "\n";
 			}
 			vector<vec3> r;
 			nif->GetNodeTransform(bn, r, cstm.trans, cstm.scale);
@@ -138,19 +137,10 @@ bool AnimInfo::LoadFromNif(NifFile* nif, const string& shape) {
 		boneIndices.push_back(slot++);
 	}
 
-	/*
-
-	nif->GetShapeBoneIDList(shape, boneids);
-	for(int i=0;i<bonenames.size();i++)  {				
-		tmpbonelist.emplace_back(bonenames[i], boneids[i], i);
-		nif->GetNodeTransform(bonenames[i], tmpbonelist.back().rot,  tmpbonelist.back().trans,tmpbonelist.back().scale);
-	}
-	boneList[shape] = tmpbonelist;
-	*/
-
-	// ----  FIX :  animskin needs a different input to its constructor!  ----- //
-	//shapeSkinning[shape] = AnimSkin(nif, shape, boneList[shape]);
 	shapeSkinning[shape] = AnimSkin(nif, shape, boneIndices);
+
+	if (!invalidBones.empty())
+		wxMessageBox("Bones in shape '" + shape + "' not found in reference skeleton:\n\n" + invalidBones, "Invalid Bones");
 
 	return true;
 }
@@ -306,7 +296,7 @@ void AnimInfo::WriteToNif(NifFile* nif, bool synchBoneIDs) {
 				id = nif->GetNodeID(bone);
 				if (id == -1) {
 					if (!AnimSkeleton::getInstance().GetBone(bone, boneref)) {
-						wxMessageBox("Could not write bone from reference skeleton: " + bone);
+						//wxMessageBox("Could not write bone from reference skeleton: " + bone);
 						continue;
 					}
 					if (boneref.refCount == 0)
@@ -330,7 +320,7 @@ void AnimInfo::WriteToNif(NifFile* nif, bool synchBoneIDs) {
 	for (auto shapeBoneList: shapeBones) {
 		for (auto boneName: shapeBoneList.second) {
 			if (!AnimSkeleton::getInstance().GetBoneTransform(boneName, xform)) {
-	 			wxMessageBox("Error! Attempted to access bone that does not exist in reference skeleton: " + boneName);
+	 			//wxMessageBox("Error! Attempted to access bone that does not exist in reference skeleton: " + boneName);
 				continue;
 			}
 			nif->SetNodeTransform(boneName, xform);

@@ -713,18 +713,20 @@ bool GLSurface::CollidePlane(int ScreenX, int ScreenY, vec3& outOrigin, vec3& in
 	return true;
 }
 
-bool GLSurface::UpdateCursor(int ScreenX, int ScreenY, int* outHoverTri, float* outHoverWeight) {
+bool GLSurface::UpdateCursor(int ScreenX, int ScreenY, int* outHoverTri, float* outHoverWeight, float* outHoverMask) {
 	vec3 o; 
 	vec3 d;
 	vec3 v;
 	vec3 vo;
 	bool ret = false;
 	int ringID;
-	//return ;
+
 	if (outHoverTri)
 		(*outHoverTri) = -1;
 	if (outHoverWeight)
 		(*outHoverWeight) = 0.0f;
+	if (outHoverMask)
+		(*outHoverMask) = 0.0f;
 
     GetPickRay(ScreenX, ScreenY, d, o);
 	if (meshes.size() > 0 && activeMesh >= 0) {
@@ -780,12 +782,13 @@ bool GLSurface::UpdateCursor(int ScreenX, int ScreenY, int* outHoverTri, float* 
 					pointid = t.p3;
 				}
 
+				int dec = 5;
 				if (outHoverTri) 
 					(*outHoverTri) = pointid;
-				if (outHoverWeight) {
-					int dec = 5;
+				if (outHoverWeight)
 					(*outHoverWeight) = floor(meshes[activeMesh]->vcolors[pointid].y * pow(10, dec) + 0.5f) / pow(10, dec);
-				}
+				if (outHoverMask)
+					(*outHoverMask) = floor(meshes[activeMesh]->vcolors[pointid].x * pow(10, dec) + 0.5f) / pow(10, dec);
 
 				AddVisPoint(hilitepoint, "pointhilite");
 				overlays[AddVisPoint(origin, "cursorcenter")]->color = vec3(1.0f, 0.0f, 0.0f);
@@ -816,6 +819,64 @@ bool GLSurface::UpdateCursor(int ScreenX, int ScreenY, int* outHoverTri, float* 
 		}// */
 	}
 	return ret;
+}
+
+bool GLSurface::GetCursorVertex(int ScreenX, int ScreenY, vtx* outHoverVtx) {
+	vec3 o;
+	vec3 d;
+	vec3 v;
+	vec3 vo;
+
+	if (outHoverVtx)
+		(*outHoverVtx) = vtx();
+
+	GetPickRay(ScreenX, ScreenY, d, o);
+	if (meshes.size() > 0 && activeMesh >= 0) {
+		vector<IntersectResult> results;
+		if (meshes[activeMesh]->bvh->IntersectRay(o, d, &results)) {
+			if (results.size() > 0) {
+				int min_i = 0;
+				float minDist = results[0].HitDistance;
+				for (int i = 1; i < results.size(); i++) {
+					if (results[i].HitDistance < minDist)
+						min_i = i;
+				}
+
+				vec3 origin = results[min_i].HitCoord;
+
+				tri t;
+				t = meshes[activeMesh]->tris[results[min_i].HitFacet];
+				vtx v1 = (meshes[activeMesh]->verts[t.p1]);
+				vtx v2 = (meshes[activeMesh]->verts[t.p2]);
+				vtx v3 = (meshes[activeMesh]->verts[t.p3]);
+
+
+				vec3 p1(v1.x, v1.y, v1.z);
+				vec3 p2(v2.x, v2.y, v2.z);
+				vec3 p3(v3.x, v3.y, v3.z);
+
+				vec3 hilitepoint = p1;
+				float closestdist = fabs(p1.DistanceTo(origin));
+				float nextdist = fabs(p2.DistanceTo(origin));
+				int pointid = t.p1;
+
+				if (nextdist < closestdist) {
+					closestdist = nextdist;
+					hilitepoint = p2;
+					pointid = t.p2;
+				}
+				nextdist = fabs(p3.DistanceTo(origin));
+				if (nextdist < closestdist) {
+					hilitepoint = p3;
+					pointid = t.p3;
+				}
+
+				(*outHoverVtx) = meshes[activeMesh]->verts[pointid];
+				return TRUE;
+			}
+		}
+	}
+	return FALSE;
 }
 
 void GLSurface::ShowCursor(bool show) {
