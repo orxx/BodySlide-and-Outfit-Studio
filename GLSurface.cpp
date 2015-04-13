@@ -298,7 +298,7 @@ bool GLSurface::QueryMultisample(HWND queryWnd) {
     pfd.iLayerType = PFD_MAIN_PLANE;
 
     int format = ChoosePixelFormat(hDC, &pfd);
-    bool spfYes = SetPixelFormat(hDC, format, &pfd);
+    SetPixelFormat(hDC, format, &pfd);
 	
 	hRC = wglCreateContext(hDC);
 	wglMakeCurrent(hDC, hRC);
@@ -419,7 +419,7 @@ int GLSurface::Initialize(HWND parentWnd, bool bUseDefaultShaders) {
 
 	if (multisampleState != 1) {
 		int format = ChoosePixelFormat(hDC, &pfd);
-		bool aa = SetPixelFormat(hDC, format, &pfd);
+		SetPixelFormat(hDC, format, &pfd);
 		hRC = wglCreateContext(hDC);
 		wglMakeCurrent(hDC, hRC);
 
@@ -986,16 +986,23 @@ void GLSurface::RenderMesh(mesh* m) {
 		glVertexPointer(3, GL_FLOAT, sizeof(vtx), &m->verts[0].x);
 		glEnableClientState(GL_NORMAL_ARRAY);
 		glNormalPointer(GL_FLOAT, sizeof(vtx), &m->verts[0].nx);
+
 		if (m->vcolors && bMaskVisible) {
 			glEnableVertexAttribArray(materials[m->MatRef]->shader->GetMaskAttribute());
 			glVertexAttribPointer(materials[m->MatRef]->shader->GetMaskAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), m->vcolors);
+		} else
+			glDisableVertexAttribArray(materials[m->MatRef]->shader->GetMaskAttribute());
+
+		if (m->vcolors && bWeightColors) {
 			glEnableVertexAttribArray(materials[m->MatRef]->shader->GetWeightAttribute());
 			glVertexAttribPointer(materials[m->MatRef]->shader->GetWeightAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), &m->vcolors[0].y);
-		} else {
-			glDisableVertexAttribArray(materials[m->MatRef]->shader->GetMaskAttribute());
-			glDisableVertexAttribArray(materials[m->MatRef]->shader->GetWeightAttribute());
-			initMaterial(m->color);
 		}
+		else
+			glDisableVertexAttribArray(materials[m->MatRef]->shader->GetWeightAttribute());
+
+		if (!m->vcolors)
+			initMaterial(m->color);
+
 		if (m->textured && bTextured) {
 			// Alpha
 			glEnable(GL_BLEND);

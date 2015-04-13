@@ -77,11 +77,11 @@ public:
 
 	bool StartBrushStroke(wxPoint& screenPos);
 	void UpdateBrushStroke(wxPoint& screenPos);
-	void EndBrushStroke(wxPoint& screenPos);
+	void EndBrushStroke();
 
 	bool StartTransform(wxPoint& screenPos);
 	void UpdateTransform(wxPoint& screenPos);
-	void EndTransform(wxPoint& screenPos);
+	void EndTransform();
 
 	bool UndoStroke();
 	bool RedoStroke();
@@ -229,7 +229,7 @@ public:
 	void ClearMask() {
 		mesh* m = gls.GetActiveMesh();
 		if (m->vcolors) {
-			m->ColorChannelFill(0, 0);
+			m->ColorChannelFill(0, 0.0f);
 		}
 	}
 
@@ -261,8 +261,8 @@ public:
 	void InvertMask() {
 		mesh* m = gls.GetActiveMesh();
 		if (!m->vcolors) {
-			m->ColorFill(vec3(0, 0, 0));
-		} 
+			m->ColorFill(vec3(0.0f, 0.0f, 0.0f));
+		}
 		for (int i = 0; i < m->nVerts; i++) {
 			m->vcolors[i].x = 1 - m->vcolors[i].x;
 		}
@@ -336,6 +336,7 @@ private:
 	TB_Unmask UnMaskBrush;
 	TB_Weight weightBrush;
 	TB_Unweight unweightBrush;
+	TB_SmoothWeight smoothWeightBrush;
 	TB_XForm translateBrush;
 
 	TweakStroke* activeStroke;
@@ -354,7 +355,7 @@ class OutfitStudio : public wxFrame
 {
 public:
     // ctor(s)
-    OutfitStudio(wxWindow* parent, const wxString& title, const wxPoint& pos, const wxSize& size, ConfigurationManager& inConfig);
+    OutfitStudio(wxWindow* parent, const wxPoint& pos, const wxSize& size, ConfigurationManager& inConfig);
 	~OutfitStudio();
 	wxGLPanel* glView;
 
@@ -540,10 +541,10 @@ private:
 
 	void OnSelectSliders(wxCommandEvent& event);
 	void OnOutfitVisToggle(wxTreeEvent& event);
-	void OnOutfitShapeSelect(wxTreeEvent& event) ;
-	void OnOutfitBoneSelect(wxTreeEvent& event) ;
-	void OnOutfitShapeContext(wxTreeEvent& event) ;	
-	void OnBoneContext(wxTreeEvent& event) ;
+	void OnOutfitShapeSelect(wxTreeEvent& event);
+	void OnOutfitBoneSelect(wxTreeEvent& event);
+	void OnOutfitShapeContext(wxTreeEvent& event);	
+	void OnBoneContext(wxTreeEvent& event);
 	void OnCheckTreeSel(wxTreeEvent& event);
 	void OnCheckBox(wxCommandEvent& event);
 	void OnKillFocusOutfitShapes(wxCommandEvent& event);
@@ -592,6 +593,7 @@ private:
 	void OnDeleteBone(wxCommandEvent& event);
 	void OnCopyBoneWeight(wxCommandEvent& event);
 	void OnCopySelectedWeight(wxCommandEvent& event);
+	void OnTransferSelectedWeight(wxCommandEvent& event);
 	void OnMaskWeighted(wxCommandEvent& event);
 	void OnBuildSkinPartitions(wxCommandEvent& event);
 
@@ -614,11 +616,9 @@ private:
 
 	void OnUndo(wxCommandEvent& WXUNUSED(event)) {
 		glView->UndoStroke();
-		//ActiveShapeUpdated();
 	}
 	void OnRedo(wxCommandEvent& WXUNUSED(event)) {
 		glView->RedoStroke();
-		//ActiveShapeUpdated();
 	}
 
 	void OnGhostMesh(wxCommandEvent& WXUNUSED(event)) {

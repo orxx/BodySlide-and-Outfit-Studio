@@ -809,18 +809,14 @@ void OutfitProject::RotateShape(const string& shapeName, vec3& angle, bool IsOut
 	}
 }
 
-// uses the automorph class to generate proximity values for bone weights.  This is done by
-	//   creating several virtual sliders that contain weight offsets for each vertex in the ref nif per bone.  
-	//   these data sets are then temporarily linked to the automorph class, and result 'diffs' are generated.
-	//   the resulting data is then written back to the outfit shape as the Green color channel.
 void OutfitProject::CopyBoneWeights(const string& destShape, unordered_map<int, float>* mask, vector<string>* inBoneList) {
 	if (!baseNif.IsValid())
 		return;
 
 	DiffDataSets dds;
 	vec3 tmp;
-	unordered_map<int, float> weights;
-	unordered_map<int, float> oldWeights;
+	unordered_map<ushort, float> weights;
+	unordered_map<ushort, float> oldWeights;
 	unordered_map<int, vec3> diffresult;
 	vector<string> lboneList;
 	vector<string>* boneList;
@@ -898,21 +894,76 @@ void OutfitProject::CopyBoneWeights(const string& destShape, unordered_map<int, 
 	owner->UpdateProgress(100, "Finished");
 }
 
+void OutfitProject::TransferSelectedWeights(const string& destShape, unordered_map<int, float>* mask, vector<string>* inBoneList) {
+	if (!baseNif.IsValid())
+		return;
+
+	unordered_map<ushort, float> weights;
+	unordered_map<ushort, float> oldWeights;
+	vector<string> allBoneList;
+	vector<string>* boneList;
+
+	owner->UpdateProgress(10, "Gathering bones");
+
+	if (inBoneList == NULL) {
+		for (auto boneName : baseAnim.shapeBones[baseShapeName]) {
+			allBoneList.push_back(boneName);
+		}
+		boneList = &allBoneList;
+	}
+	else
+		boneList = inBoneList;
+
+	float step = 50.0f / boneList->size();
+	float prog = 40.0f;
+
+	owner->UpdateProgress(prog, "Transferring bone weights");
+
+	for (auto boneName : (*boneList)) {
+		baseAnim.GetWeights(baseShapeName, boneName, weights);
+		workAnim.GetWeights(destShape, boneName, oldWeights);
+
+		for (auto w : weights) {
+			if (mask) {
+				if (1.0f - (*mask)[w.first] > 0.0f)
+					weights[w.first] = w.second * (1.0f - (*mask)[w.first]);
+				else
+					weights[w.first] = oldWeights[w.first];
+			}
+			else
+				weights[w.first] = w.second;
+		}
+
+		AnimBone boneRef;
+		AnimSkeleton::getInstance().GetBone(boneName, boneRef);
+		if (workAnim.AddShapeBone(destShape, boneRef)) {
+			skin_transform xForm;
+			baseAnim.GetShapeBoneXform(baseShapeName, boneName, xForm);
+			workAnim.SetShapeBoneXform(destShape, boneName, xForm);
+		}
+
+		workAnim.SetWeights(destShape, boneName, weights);
+		owner->UpdateProgress(prog += step, "");
+	}
+
+	owner->UpdateProgress(100, "Finished");
+}
+
 bool OutfitProject::OutfitHasUnweighted() {
 	vector<string> workShapes;
 	OutfitShapes(workShapes);
-	for (auto s: workShapes) {
+	for (auto s : workShapes) {
 		vector<string> bones;
 		vector<vec3> verts;
 		RefBones(bones);
 		workNif.GetVertsForShape(s, verts);
-		
-		unordered_map<int,int> influences;
+
+		unordered_map<int, int> influences;
 		for (int i = 0; i < verts.size(); i++)
 			influences.emplace(i, 0);
 
-		for (auto b: bones) {
-			unordered_map<int,float> boneWeights;
+		for (auto b : bones) {
+			unordered_map<ushort, float> boneWeights;
 			workAnim.GetWeights(s, b, boneWeights);
 			for (int i = 0; i < verts.size(); i++) {
 				auto id = boneWeights.find(i);
@@ -920,12 +971,13 @@ bool OutfitProject::OutfitHasUnweighted() {
 					influences.at(i)++;
 			}
 		}
-		
+
 		mesh* m = owner->glView->GetMesh(s);
-		m->ColorFill(vec3(0.0f, 0.0f, 0.0f));
 		bool unweighted = false;
-		for (auto i: influences) {
+		for (auto i : influences) {
 			if (i.second == 0) {
+				if (!unweighted)
+					m->ColorFill(vec3(0.0f, 0.0f, 0.0f));
 				m->vcolors[i.first].x = 1.0f;
 				unweighted = true;
 			}
@@ -934,6 +986,97 @@ bool OutfitProject::OutfitHasUnweighted() {
 			return true;
 	}
 	return false;
+}
+
+void OutfitProject::ApplyBoneScale(const string& bone, int sliderPos) {
+	vector<string> bones;
+	vector<vec3> boneRot;
+	vec3 boneTranslation;
+	float boneScale;
+	unordered_map<ushort, float> weights;
+
+	vector<vec3> verts;
+	vector<string> shapes;
+	ClearBoneScale();
+
+	OutfitShapes(shapes);
+	for (auto s : shapes) {
+		workNif.GetVertsForShape(s, verts);
+		workNif.GetShapeBoneList(s, bones);
+		boneScaleOffsets.emplace(s, vector<vec3>(verts.size()));
+		for (auto b : bones) {
+			if (b == bone) {
+				workNif.GetNodeTransform(b, boneRot, boneTranslation, boneScale);
+				workAnim.GetWeights(s, b, weights);
+				for (auto w : weights) {
+					vec3 dir = verts[w.first] - boneTranslation;
+					dir.Normalize();
+					vec3 offset = dir * w.second * sliderPos / 5.0f;
+					verts[w.first] += offset;
+					boneScaleOffsets[s][w.first] += offset;
+				}
+			}
+		}
+		workNif.SetVertsForShape(s, verts);
+		owner->glView->UpdateMeshVertices(s, &verts);
+	}
+
+	shapes.clear();
+	RefShapes(shapes);
+	for (auto s : shapes) {
+		baseNif.GetVertsForShape(s, verts);
+		baseNif.GetShapeBoneList(s, bones);
+		boneScaleOffsets.emplace(s, vector<vec3>(verts.size()));
+		for (auto b : bones) {
+			if (b == bone) {
+				baseNif.GetNodeTransform(b, boneRot, boneTranslation, boneScale);
+				baseAnim.GetWeights(s, b, weights);
+				for (auto w : weights) {
+					vec3 dir = verts[w.first] - boneTranslation;
+					dir.Normalize();
+					vec3 offset = dir * w.second * sliderPos / 5.0f;
+					verts[w.first] += offset;
+					boneScaleOffsets[s][w.first] += offset;
+				}
+			}
+		}
+		baseNif.SetVertsForShape(s, verts);
+		owner->glView->UpdateMeshVertices(s, &verts);
+	}
+}
+
+void OutfitProject::ClearBoneScale() {
+	vector<vec3> verts;
+	vector<string> shapes;
+
+	OutfitShapes(shapes);
+	for (auto s : shapes) {
+		if (boneScaleOffsets.find(s) != boneScaleOffsets.end()) {
+			workNif.GetVertsForShape(s, verts);
+			if (verts.size() == boneScaleOffsets[s].size()) {
+				for (int i = 0; i < verts.size(); i++)
+					verts[i] -= boneScaleOffsets[s][i];
+				workNif.SetVertsForShape(s, verts);
+				owner->glView->UpdateMeshVertices(s, &verts);
+			}
+		}
+	}
+
+	shapes.clear();
+	RefShapes(shapes);
+	for (auto s : shapes) {
+		if (boneScaleOffsets.find(s) != boneScaleOffsets.end()) {
+			baseNif.GetVertsForShape(s, verts);
+			if (verts.size() == boneScaleOffsets[s].size()) {
+				for (int i = 0; i < verts.size(); i++)
+					verts[i] -= boneScaleOffsets[s][i];
+				baseNif.SetVertsForShape(s, verts);
+				owner->glView->UpdateMeshVertices(s, &verts);
+			}
+		}
+	}
+
+	boneScaleOffsets.clear();
 }
 
 void OutfitProject::AddBoneRef(const string& boneName, bool IsOutfit) {
@@ -1097,10 +1240,6 @@ int OutfitProject::LoadReferenceNif(const string& fileName, const string& shapeN
 
 	AutoOffset(false);
 
-	// TriStrips not entirely supported
-	if (baseNif.HasBlockType("NiTriStrips") || baseNif.HasBlockType("NiTriStripsData"))
-		wxMessageBox("Reference .nif contains NiTriStrips (instead of NiTriShapes), which Outfit Studio does not support. Please use NifSkope to convert NiTriStrips to NiTriShapes with 'Triangulate' and regenerate skin partitions without tri strips.", "Load Failure", 5L | wxICON_ERROR);
-
 	return 0;
 }
 
@@ -1130,10 +1269,6 @@ int OutfitProject::LoadReference(const string& filename, const string& setName, 
 		wxMessageBox("Could not load reference NIF.", "Load Reference", 5L | wxICON_ERROR);
 		return 2;
 	}
-
-	// TriStrips not entirely supported
-	if (baseNif.HasBlockType("NiTriStrips") || baseNif.HasBlockType("NiTriStripsData"))
-		wxMessageBox("Reference .nif contains NiTriStrips (instead of NiTriShapes), which Outfit Studio does not support. Please use NifSkope to convert NiTriStrips to NiTriShapes with 'Triangulate' and regenerate skin partitions without tri strips.", "Load Failure", 5L | wxICON_ERROR);
 
 	vector<string> shapes;
 	baseNif.GetShapeList(shapes);
@@ -1320,10 +1455,6 @@ int OutfitProject::LoadOutfit(const string& filename, const string& inOutfitName
 	workAnim.LoadFromNif(&workNif);
 	AutoOffset(true);
 
-	// TriStrips not entirely supported
-	if (workNif.HasBlockType("NiTriStrips") || workNif.HasBlockType("NiTriStripsData"))
-		wxMessageBox("Outfit .nif contains NiTriStrips (instead of NiTriShapes), which Outfit Studio does not support. Please use NifSkope to convert NiTriStrips to NiTriShapes with 'Triangulate' and regenerate skin partitions without tri strips.", "Load Failure", 5L | wxICON_ERROR);
-
 	// No shapes in nif file
 	if (workShapes.size() == 0)
 		return 2;
@@ -1413,10 +1544,6 @@ int OutfitProject::AddNif(const string& filename) {
 
 	AutoOffset(true);
 
-	// TriStrips not entirely supported
-	if (workNif.HasBlockType("NiTriStrips") || workNif.HasBlockType("NiTriStripsData"))
-		wxMessageBox("Outfit .nif contains NiTriStrips (instead of NiTriShapes), which Outfit Studio does not support. Please use NifSkope to convert NiTriStrips to NiTriShapes with 'Triangulate' and regenerate skin partitions without tri strips.", "Load Failure", 5L | wxICON_ERROR);
-
 	// No shapes in nif file
 	if (workShapes.size() == 0)
 		return 3;
@@ -1437,7 +1564,7 @@ int OutfitProject::OutfitFromSliderSet(const string& filename, const string& sli
 	}
 	owner->UpdateProgress(10, "Retrieving outfit sliders");
 	SliderSet tmpSet;
-	if (InSS.GetSet(sliderSetName, tmpSet, LOADSS_DIRECT)) {
+	if (InSS.GetSet(sliderSetName, tmpSet)) {
 		owner->EndProgress();
 		return 2;
 	}
@@ -1461,9 +1588,8 @@ int OutfitProject::OutfitFromSliderSet(const string& filename, const string& sli
 	activeSet.GetReferencedTargets(refTargets);
 	baseShapeName = activeSet.TargetToShape(refTargets[0]);
 
-	for (auto s: refTargets) {
-		DeleteOutfitShape(activeSet.TargetToShape(s));
-	}
+	if (!baseShapeName.empty())
+		DeleteOutfitShape(baseShapeName);
 	
 	owner->UpdateProgress(90, "Updating outfit slider data");
 	morpher.LoadResultDiffs(tmpSet);
@@ -1473,9 +1599,8 @@ int OutfitProject::OutfitFromSliderSet(const string& filename, const string& sli
 	mDataDir = tmpSet.GetDefaultDataFolder();
 	mBaseFile = tmpSet.GetInputFileName();
 	size_t slashpos = mBaseFile.rfind("\\");
-	if (slashpos != string::npos) {
+	if (slashpos != string::npos)
 		mBaseFile = mBaseFile.substr(slashpos + 1);
-	}
 
 	mGamePath = tmpSet.GetOutputPath();
 	mGameFile = tmpSet.GetOutputFile();
@@ -1483,11 +1608,6 @@ int OutfitProject::OutfitFromSliderSet(const string& filename, const string& sli
 	mGenWeights = tmpSet.GenWeights();
 
 	owner->UpdateProgress(100, "Complete");
-
-/*	for (int i = 0; i < tmpSet.size(); i++) {
-		activeSet.CopySlider(&tmpSet[i]);
-	}
-*/
 	owner->EndProgress();
 	return 0;
 }
@@ -1773,9 +1893,9 @@ int OutfitProject::SaveModifiedOutfitNif(const string& filename, const vector<me
 
 int OutfitProject::ExportShape(const string& shapeName, const string& fname, bool isOutfit) {
 	if (isOutfit) {
-		return workNif.ExportShapeObj((string)fname, (string)shapeName, 0.1f);
+		return workNif.ExportShapeObj(fname, shapeName, 0.1f);
 	} else {
-		return baseNif.ExportShapeObj((string)fname, (string)shapeName, 0.1f);
+		return baseNif.ExportShapeObj(fname, shapeName, 0.1f);
 	}
 }
 

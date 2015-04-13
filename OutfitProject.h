@@ -42,6 +42,7 @@ public:
 
 	AnimInfo baseAnim;
 	AnimInfo workAnim;
+	unordered_map<string, vector<vec3>> boneScaleOffsets;
 
 	map<string, bool> shapeDirty;
 	unordered_map<string, string> outfitTextures;
@@ -138,7 +139,7 @@ public:
 	void SetRefTexture(const string& shapeName, const string& textureFile);
 
 	int RefShapeShaderType(const string& shapeName) {
-		auto s = baseNif.GetShaderForShape((string)shapeName);
+		auto s = baseNif.GetShaderForShape(shapeName);
 		if (s && s->IsSkinShader())
 			return 1;
 		else
@@ -146,7 +147,7 @@ public:
 	}
 
 	int OutfitShapeShaderType(const string& shapeName) {
-		auto s = workNif.GetShaderForShape((string)shapeName);
+		auto s = workNif.GetShaderForShape(shapeName);
 		if (s && s->IsSkinShader())
 			return 1;
 		else
@@ -168,12 +169,17 @@ public:
 	
 	void AutoOffset(bool IsOutfit);
 
-	// uses the automorph class to generate proximity values for bone weights.  This is done by
-	//   creating several virtual sliders that contain weight offsets for each vertex per bone.  
-	//   these data sets are then temporarily linked to the automorph class, and result 'diffs' are generated.
-	//   the resulting data is then written back to the outfit shape as the Green color channel.
+	// Uses the AutoMorph class to generate proximity values for bone weights.
+	// This is done by creating several virtual sliders that contain weight offsets for each vertex per bone.
+	// These data sets are then temporarily linked to the AutoMorph class and result 'diffs' are generated.
+	// The resulting data is then written back to the outfit shape as the green color channel.
 	void CopyBoneWeights(const string& destShape, unordered_map<int, float>* mask = NULL, vector<string>* inBoneList = NULL);
+	// Transfers the weights of the selected bones from reference to chosen shape 1:1. Requires same vertex count and order.
+	void TransferSelectedWeights(const string& destShape, unordered_map<int, float>* mask = NULL, vector<string>* inBoneList = NULL);
 	bool OutfitHasUnweighted();
+
+	void ApplyBoneScale(const string& bone, int sliderPos);
+	void ClearBoneScale();
 
 	void AddBoneRef(const string& boneName, bool IsOutfit = true);
 

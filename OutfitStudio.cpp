@@ -87,6 +87,7 @@ BEGIN_EVENT_TABLE(OutfitStudio, wxFrame)
 	EVT_MENU(XRCID("deleteBone"), OutfitStudio::OnDeleteBone)
 	EVT_MENU(XRCID("copyBoneWeight"), OutfitStudio::OnCopyBoneWeight)	
 	EVT_MENU(XRCID("copySelectedWeight"), OutfitStudio::OnCopySelectedWeight)
+	EVT_MENU(XRCID("transferSelectedWeight"), OutfitStudio::OnTransferSelectedWeight)
 	EVT_MENU(XRCID("maskWeightedVerts"), OutfitStudio::OnMaskWeighted)
 	EVT_MENU(XRCID("buildSkinPartitions"), OutfitStudio::OnBuildSkinPartitions)
 
@@ -115,7 +116,7 @@ END_EVENT_TABLE()
 // ----------------------------------------------------------------------------
 
 // frame constructor
-OutfitStudio::OutfitStudio(wxWindow* parent, const wxString& title, const wxPoint& pos, const wxSize& size, ConfigurationManager& inConfig) : appConfig(inConfig) {
+OutfitStudio::OutfitStudio(wxWindow* parent, const wxPoint& pos, const wxSize& size, ConfigurationManager& inConfig) : appConfig(inConfig) {
 	progressVal = 0;
 	wxXmlResource* rsrc = wxXmlResource::Get();
 
@@ -454,58 +455,65 @@ void OutfitStudio::UpdateShapeSource(const string& shapeName, bool bIsOutfit) {
 
 void OutfitStudio::ActiveShapeUpdated(TweakStroke* refStroke, bool bIsUndo) {
 	if (bEditSlider) {
-		unordered_map<int,vector3> strokediff;
-		for (auto p: refStroke->pointStartState) {
+		unordered_map<int, vector3> strokediff;
+		for (auto p : refStroke->pointStartState) {
 			if (bIsUndo) {
-				strokediff[p.first] = p.second - refStroke->pointEndState[p.first];		
-			} else {
-				strokediff[p.first] = refStroke->pointEndState[p.first] - p.second;		
+				strokediff[p.first] = p.second - refStroke->pointEndState[p.first];
+			}
+			else {
+				strokediff[p.first] = refStroke->pointEndState[p.first] - p.second;
 			}
 		}
 		Proj->UpdateMorphResult(activeShape, activeSlider, strokediff, activeItem->bIsOutfitShape);
 
-	} else { 
+	}
+	else {
 		if (refStroke->BrushType() == TBT_WEIGHT) {
-			unordered_map<int, float> newWeights;
+			unordered_map<ushort, float> newWeights;
 			TweakBrush* br = refStroke->GetRefBrush();
 			string refBone;
-		
-			if (br->Name() == "WeightPaint") {
-				refBone = ((TB_Weight*)br)->refBone;
-			} else {
-				
-				refBone = ((TB_Unweight*)br)->refBone;
-			}
-			if (activeItem->bIsOutfitShape) {
-				Proj->workAnim.GetWeights(activeShape, refBone, newWeights);
-			} else {				
-				Proj->baseAnim.GetWeights(activeShape, refBone, newWeights);
-			}
 
-			if(bIsUndo) {
-				for (auto p: refStroke->pointStartState) {
+			if (br->Name() == "Weight Paint")
+				refBone = ((TB_Weight*)br)->refBone;
+			else if (br->Name() == "Weight Erase")
+				refBone = ((TB_Unweight*)br)->refBone;
+			else
+				refBone = ((TB_SmoothWeight*)br)->refBone;
+
+			if (activeItem->bIsOutfitShape)
+				Proj->workAnim.GetWeights(activeShape, refBone, newWeights);
+			else
+				Proj->baseAnim.GetWeights(activeShape, refBone, newWeights);
+
+			if (bIsUndo) {
+				for (auto p : refStroke->pointStartState) {
 					if (p.second.y == 0.0f) {
 						newWeights.erase(p.first);
-					} else {
-						newWeights[p.first] = p.second.y;				
+					}
+					else {
+						newWeights[p.first] = p.second.y;
 					}
 				}
-			} else {
-				for (auto p: refStroke->pointEndState) {
+			}
+			else {
+				for (auto p : refStroke->pointEndState) {
 					if (p.second.y == 0.0f) {
 						newWeights.erase(p.first);
-					} else {
-						newWeights[p.first] = p.second.y;				
+					}
+					else {
+						newWeights[p.first] = p.second.y;
 					}
 				}
-			} 
+			}
 			if (activeItem->bIsOutfitShape) {
 				Proj->workAnim.SetWeights(activeShape, refBone, newWeights);
-			} else {				
+			}
+			else {
 				Proj->baseAnim.SetWeights(activeShape, refBone, newWeights);
 			}
 		}
-		Proj->SetDirty(activeShape);
+		else
+			Proj->SetDirty(activeShape);
 	}
 }
 
@@ -1631,6 +1639,9 @@ void OutfitStudio::OnOutfitBoneSelect(wxTreeEvent& event) {
 	wxTreeItemId item = event.GetItem();
 	wxTreeItemId subitem;
 
+	Proj->ClearBoneScale();
+	((wxSlider*)FindWindowByName("boneScale"))->SetValue(0);
+
 	if (!activeItem)
 		return;
 
@@ -1650,7 +1661,7 @@ void OutfitStudio::OnOutfitBoneSelect(wxTreeEvent& event) {
 
 		// Selected Shape
 		activeBone = outfitBones->GetItemText(item);
-		unordered_map<int, float> boneWeights;
+		unordered_map<ushort, float> boneWeights;
 		if (activeItem->bIsOutfitShape) {
 			Proj->workAnim.GetWeights(activeShape, activeBone, boneWeights);
 			mesh* workMesh = glView->GetMesh(activeShape);
@@ -1698,7 +1709,7 @@ void OutfitStudio::OnOutfitShapeContext(wxTreeEvent& event) {
 	wxTreeItemId item = event.GetItem();
 	if (outfitShapes->GetItemParent(item).IsOk()) {
 		outfitShapes->SelectItem(item);
-		//OnOutfitShapeSelect(event);
+
 		wxMenu* menu = wxXmlResource::Get()->LoadMenu("menuMeshContext");
 		if (menu) {
 			PopupMenu(menu);
@@ -1808,6 +1819,8 @@ void OutfitStudio::OnClickSliderButton(wxCommandEvent& event) {
 				Proj->OutfitShapes(outfitshapes);
 
 				for (auto s : refshapes) {
+					if (s.empty())
+						continue;
 					UpdateShapeSource(s, false);
 					Proj->RefreshMorphOutfitShape(s, false);
 				}
@@ -1888,7 +1901,11 @@ void OutfitStudio::OnMeshBoneButtonClick(wxCommandEvent& event) {
 		outfitBones->Hide();
 		outfitShapes->Show();
 		((wxStateButton*)FindWindowByName("boneTabButton"))->SetCheck(false);
+		((wxSlider*)FindWindowByName("boneScale"))->Show(false);
+		((wxStaticText*)FindWindowByName("boneScaleLabel"))->Show(false);
 		outfitShapes->GetParent()->Layout();
+		Proj->ClearBoneScale();
+
 		glView->SetActiveBrush(1);
 		toolBar->ToggleTool(XRCID("btnInflateBrush"), true);
 		menuBar->Check(XRCID("btnInflateBrush"), true);
@@ -1914,7 +1931,12 @@ void OutfitStudio::OnMeshBoneButtonClick(wxCommandEvent& event) {
 		outfitShapes->Hide();
 		outfitBones->Show();
 		((wxStateButton*)FindWindowByName("meshTabButton"))->SetCheck(false);
+		wxSlider* boneScale = (wxSlider*)FindWindowByName("boneScale");
+		boneScale->SetValue(0);
+		boneScale->Show();
+		((wxStaticText*)FindWindowByName("boneScaleLabel"))->Show();
 		outfitShapes->GetParent()->Layout();
+
 		glView->SetActiveBrush(10);
 		toolBar->ToggleTool(XRCID("btnWeightBrush"), true);
 		menuBar->Check(XRCID("btnWeightBrush"), true);
@@ -1981,6 +2003,8 @@ int OutfitStudio::PromptUpdateBase() {
 		Proj->OutfitShapes(outfitshapes);
 
 		for (auto s : refshapes) {
+			if (s.empty())
+				continue;
 			UpdateShapeSource(s, false);
 			Proj->RefreshMorphOutfitShape(s, false);
 		}
@@ -2003,36 +2027,40 @@ int OutfitStudio::PromptUpdateBase() {
 }
 
 void OutfitStudio::OnSlider(wxScrollEvent& event) {
-	vector<vector3> v;
-	int response;
 	int type = event.GetEventType();
 	static bool sentinel = false;
 
-	if (type == wxEVT_SCROLL_CHANGED) {
-		if (sentinel) return;
-	}
-	else if (type == wxEVT_SCROLL_THUMBTRACK)
-		response = 1;
-	else
-		return;
+	if (type == wxEVT_SCROLL_CHANGED)
+		if (sentinel)
+			return;
 
 	wxSlider* s = ((wxSlider*)event.GetEventObject());
 	if (!s)
 		return;
 
-	string sliderName = s->GetName().BeforeLast('|');
-
 	if (IsDirty() && !bEditSlider) {
 		sentinel = true;
-		PromptUpdateBase();
+		if (PromptUpdateBase() == wxCANCEL)
+			return;
 		sentinel = false;
 	}
 
+	string sliderName = s->GetName();
+	if (sliderName == "boneScale") {
+		wxArrayTreeItemIds selItems;
+		outfitBones->GetSelections(selItems);
+		if (selItems.size() > 0) {
+			string selectedBone = outfitBones->GetItemText(selItems.front());
+			Proj->ApplyBoneScale(selectedBone, event.GetPosition());
+		}
+		return;
+	}
+	sliderName = s->GetName().BeforeLast('|');
+	if (sliderName.empty())
+		return;
+
+
 	SetSliderValue(sliderName, event.GetPosition());
-	//SetSliderValue(id, event.GetPosition());
-	//	string name = activeSet[id].Name;
-	//	activeSet[id].curValue = val;	
-	//	((wxTextCtrl*)FindWindowById(1200 + id))->SetValue(wxString::Format("%d%%", event.GetPosition()));
 
 	if (!bEditSlider && event.GetEventType() == wxEVT_SCROLL_CHANGED)
 		ApplySliders(true);
@@ -2048,6 +2076,10 @@ void OutfitStudio::OnLoadPreset(wxCommandEvent& WXUNUSED(event)) {
 
 	string choice;
 	bool hi = true;
+
+	if (IsDirty())
+		if (PromptUpdateBase() == wxCANCEL)
+			return;
 
 	presets.LoadPresets("SliderPresets", Proj->SliderSetName(), names);
 	presets.GetPresetNames(names);
@@ -3103,13 +3135,49 @@ void OutfitStudio::OnCopySelectedWeight(wxCommandEvent& event) {
 		wxMessageBox("Sorry, you cannot copy weights from the reference shape to itself.", "Cannot copy weights", wxOK | wxICON_INFORMATION, this);
 }
 
+void OutfitStudio::OnTransferSelectedWeight(wxCommandEvent& event) {
+	if (!activeItem) {
+		wxMessageBox("There is no shape selected!", "Error");
+		return;
+	}
+	if (!Proj->baseNif.IsValid())
+		return;
+
+	if (!activeItem->bIsOutfitShape) {
+		wxMessageBox("Sorry, you cannot copy weights from the reference shape to itself.", "Error");
+		return;
+	}
+
+	int baseVertCount = Proj->baseNif.GetVertCountForShape(Proj->baseShapeName);
+	int workVertCount = Proj->workNif.GetVertCountForShape(activeShape);
+	if (baseVertCount != workVertCount) {
+		wxMessageBox("The vertex count of the reference and chosen shape is not the same!", "Error");
+		return;
+	}
+
+	vector<string> selectedBones;
+	wxArrayTreeItemIds selItems;
+	outfitBones->GetSelections(selItems);
+	if (selItems.size() < 1)
+		return;
+
+	for (int i = 0; i < selItems.size(); i++)
+		selectedBones.push_back(string(outfitBones->GetItemText(selItems[i])));
+
+	StartProgress("Transfer bone weights");
+	unordered_map<int, float> mask;
+	glView->GetActiveMask(mask);
+	Proj->TransferSelectedWeights(activeShape, &mask, &selectedBones);
+	EndProgress();
+}
+
 void OutfitStudio::OnMaskWeighted(wxCommandEvent& event) {
 	if (activeShape.empty())
 		return;
 
 	vector<string> bones;
 	Proj->RefBones(bones);
-	unordered_map<int, float> boneWeights;
+	unordered_map<ushort, float> boneWeights;
 	mesh* m = glView->GetMesh(activeShape);
 	m->ColorFill(vec3(0.0f, 0.0f, 0.0f));
 	for (auto b : bones) {
@@ -3290,7 +3358,7 @@ void wxGLPanel::SetActiveBrush(int brushID) {
 void wxGLPanel::OnKeys(wxKeyEvent& event) {
 	if (event.GetUnicodeKey() == 'V') {
 		wxDialog dlg;
-		OutfitStudio* main = (OutfitStudio*)notifyWindow;
+		OutfitStudio* os = (OutfitStudio*)notifyWindow;
 		wxPoint cursorPos(event.GetPosition());
 
 		unordered_map<int, vec3> diff;
@@ -3301,8 +3369,8 @@ void wxGLPanel::OnKeys(wxKeyEvent& event) {
 		if (!gls.GetCursorVertex(cursorPos.x, cursorPos.y, &oldVertex))
 			return;
 
-		if (wxXmlResource::Get()->LoadDialog(&dlg, main, "dlgMoveVertex")) {
-			main->Proj->GetLiveVerts(main->activeItem->shapeName, verts, main->activeItem->bIsOutfitShape);
+		if (wxXmlResource::Get()->LoadDialog(&dlg, os, "dlgMoveVertex")) {
+			os->Proj->GetLiveVerts(os->activeItem->shapeName, verts, os->activeItem->bIsOutfitShape);
 			XRCCTRL(dlg, "posX", wxTextCtrl)->SetLabel(wxString::Format("%0.5f", verts[oldVertex.indexRef].x));
 			XRCCTRL(dlg, "posY", wxTextCtrl)->SetLabel(wxString::Format("%0.5f", verts[oldVertex.indexRef].y));
 			XRCCTRL(dlg, "posZ", wxTextCtrl)->SetLabel(wxString::Format("%0.5f", verts[oldVertex.indexRef].z));
@@ -3312,20 +3380,20 @@ void wxGLPanel::OnKeys(wxKeyEvent& event) {
 				newPos.y = atof(XRCCTRL(dlg, "posY", wxTextCtrl)->GetValue().ToAscii().data());
 				newPos.z = atof(XRCCTRL(dlg, "posZ", wxTextCtrl)->GetValue().ToAscii().data());
 
-				if (main->bEditSlider) {
+				if (os->bEditSlider) {
 					diff[oldVertex.indexRef] = newPos - verts[oldVertex.indexRef];
 					float diffY = diff[oldVertex.indexRef].y / 10.0f;
 					float diffZ = diff[oldVertex.indexRef].z / 10.0f;
 					diff[oldVertex.indexRef].z = diffY;
 					diff[oldVertex.indexRef].y = diffZ;
 					verts[oldVertex.indexRef] = newPos;
-					main->Proj->UpdateMorphResult(main->activeItem->shapeName, main->activeSlider, diff, main->activeItem->bIsOutfitShape);
+					os->Proj->UpdateMorphResult(os->activeItem->shapeName, os->activeSlider, diff, os->activeItem->bIsOutfitShape);
 				}
 				else {
-					main->Proj->MoveVertex(main->activeItem->shapeName, newPos, oldVertex.indexRef, main->activeItem->bIsOutfitShape);
+					os->Proj->MoveVertex(os->activeItem->shapeName, newPos, oldVertex.indexRef, os->activeItem->bIsOutfitShape);
 				}
-				main->Proj->GetLiveVerts(main->activeItem->shapeName, verts, main->activeItem->bIsOutfitShape);
-				UpdateMeshVertices(main->activeItem->shapeName, &verts);
+				os->Proj->GetLiveVerts(os->activeItem->shapeName, verts, os->activeItem->bIsOutfitShape);
+				UpdateMeshVertices(os->activeItem->shapeName, &verts);
 			}
 		}
 	}
@@ -3333,6 +3401,7 @@ void wxGLPanel::OnKeys(wxKeyEvent& event) {
 }
 
 bool wxGLPanel::StartBrushStroke(wxPoint& screenPos) {
+	OutfitStudio* os = (OutfitStudio*)notifyWindow;
 	vec3 o;
 	vec3 n;
 	vec3 v;
@@ -3346,7 +3415,7 @@ bool wxGLPanel::StartBrushStroke(wxPoint& screenPos) {
 	if (!meshHit)
 		return false;
 
-	if (!((OutfitStudio*)notifyWindow)->NotifyStrokeStarting())
+	if (!os->NotifyStrokeStarting())
 		return false;
 
 	if (bXMirror) {
@@ -3360,9 +3429,6 @@ bool wxGLPanel::StartBrushStroke(wxPoint& screenPos) {
 	n.Normalize();
 
 	wxRect r = this->GetClientRect();
-	int cx = r.GetWidth() / 2;
-	int cy = r.GetHeight() / 2;
-	//gls.GetPickRay(cx, cy, v, vo);
 	gls.GetPickRay(screenPos.x, screenPos.y, v, vo);
 	v = v * -1;
 	tpi.view = v;
@@ -3382,12 +3448,17 @@ bool wxGLPanel::StartBrushStroke(wxPoint& screenPos) {
 	}
 	else if (activeBrush == &weightBrush) {
 		if ((GetKeyState(VK_MENU) & 0x8000) > 0) {
-			unweightBrush.refBone = ((OutfitStudio*)notifyWindow)->GetActiveBone();
+			unweightBrush.refBone = os->GetActiveBone();
 			unweightBrush.setStrength(-weightBrush.getStrength());
 			activeBrush = &unweightBrush;
 		}
+		else if ((GetKeyState(VK_SHIFT) & 0x8000) > 0) {
+			smoothWeightBrush.refBone = os->GetActiveBone();
+			smoothWeightBrush.setStrength(weightBrush.getStrength() * 15.0f);
+			activeBrush = &smoothWeightBrush;
+		}
 		else {
-			weightBrush.refBone = ((OutfitStudio*)notifyWindow)->GetActiveBone();
+			weightBrush.refBone = os->GetActiveBone();
 		}
 	}
 	else if ((GetKeyState(VK_MENU) & 0x8000) > 0) {
@@ -3405,6 +3476,11 @@ bool wxGLPanel::StartBrushStroke(wxPoint& screenPos) {
 	else if (activeBrush != &weightBrush && ((GetKeyState(VK_SHIFT) & 0x8000) > 0)) {
 		activeBrush = &smoothBrush;
 	}
+
+	if (activeBrush->Type() == TBT_WEIGHT && os->IsDirty())
+		if (os->PromptUpdateBase() == wxCANCEL)
+			return false;
+
 	activeStroke = strokeManager->CreateStroke(gls.GetActiveMesh(), activeBrush);
 	activeBrush->setConnected(bConnectedEdit);
 	activeBrush->setMirror(bXMirror);
@@ -3456,19 +3532,40 @@ void wxGLPanel::UpdateBrushStroke(wxPoint& screenPos) {
 		v = v*-1;
 		tpi.view = v;
 		activeStroke->updateStroke(tpi);
+
+		OutfitStudio* os = (OutfitStudio*)notifyWindow;
+		if (activeBrush->Type() == TBT_WEIGHT) {
+			wxArrayTreeItemIds selItems;
+			os->outfitBones->GetSelections(selItems);
+			if (selItems.size() > 0) {
+				string selectedBone = os->outfitBones->GetItemText(selItems.front());
+				int boneScalePos = ((wxSlider*)FindWindowByName("boneScale"))->GetValue();
+				os->ActiveShapeUpdated(strokeManager->GetCurStateStroke());
+				os->Proj->ApplyBoneScale(selectedBone, boneScalePos);
+			}
+		}
 	}
 }
 
-void wxGLPanel::EndBrushStroke(wxPoint& screenPos) {
+void wxGLPanel::EndBrushStroke() {
 	if (activeStroke) {
 		activeStroke->endStroke();
-		if (activeStroke->BrushType() == TBT_XFORM) {
-			//strokeManager->InvalidateHistoricalBVH();
+
+		OutfitStudio* os = (OutfitStudio*)notifyWindow;
+		if (activeStroke->BrushType() != TBT_MASK)
+			os->ActiveShapeUpdated(strokeManager->GetCurStateStroke());
+
+		if (activeStroke->BrushType() == TBT_WEIGHT) {
+			wxArrayTreeItemIds selItems;
+			os->outfitBones->GetSelections(selItems);
+			if (selItems.size() > 0) {
+				string selectedBone = os->outfitBones->GetItemText(selItems.front());
+				int boneScalePos = ((wxSlider*)FindWindowByName("boneScale"))->GetValue();
+				os->Proj->ApplyBoneScale(selectedBone, boneScalePos);
+			}
 		}
 
 		activeStroke = NULL;
-		if (activeBrush != &maskBrush)
-			((OutfitStudio*)notifyWindow)->ActiveShapeUpdated(strokeManager->GetCurStateStroke());
 		activeBrush = savedBrush;
 	}
 }
@@ -3553,19 +3650,19 @@ bool wxGLPanel::StartTransform(wxPoint& screenPos) {
 }
 
 void wxGLPanel::UpdateTransform(wxPoint& screenPos) {
-
 	TweakPickInfo tpi;
-
 	vec3 pn;
 	float pd;
+
 	((TB_XForm*)(activeBrush))->GetWorkingPlane(pn, pd);
 	gls.CollidePlane(screenPos.x, screenPos.y, tpi.origin, pn, -pd);
 	if (tpi.origin.x < 0)
 		tpi.origin.x = tpi.origin.x;
+
 	activeStroke->updateStroke(tpi);
 }
 
-void wxGLPanel::EndTransform(wxPoint& screenPos) {
+void wxGLPanel::EndTransform() {
 	activeStroke->endStroke();
 	activeStroke = NULL;
 	ShowTransformTool(true, false);
@@ -3577,13 +3674,21 @@ bool wxGLPanel::UndoStroke() {
 	mesh* m = strokeManager->GetCurStateMesh();
 	bool skip = (!gls.IsValidMesh(m));
 	bool ret = strokeManager->backStroke(skip);
-	if (!skip) {
-		if (ret && curStroke && curStroke->BrushType() != TBT_MASK) {
-			((OutfitStudio*)notifyWindow)->ActiveShapeUpdated(curStroke, true);
-			if (curStroke->BrushType() == TBT_XFORM) {
+	if (!skip && ret) {
+		OutfitStudio* os = (OutfitStudio*)notifyWindow;
+		if (curStroke && curStroke->BrushType() != TBT_MASK) {
+			os->ActiveShapeUpdated(curStroke, true);
+			if (curStroke->BrushType() == TBT_XFORM)
 				ShowTransformTool(true, false);
+		}
+		if (curStroke && curStroke->BrushType() == TBT_WEIGHT) {
+			wxArrayTreeItemIds selItems;
+			os->outfitBones->GetSelections(selItems);
+			if (selItems.size() > 0) {
+				string selectedBone = os->outfitBones->GetItemText(selItems.front());
+				int boneScalePos = ((wxSlider*)FindWindowByName("boneScale"))->GetValue();
+				os->Proj->ApplyBoneScale(selectedBone, boneScalePos);
 			}
-
 		}
 	}
 	Refresh();
@@ -3595,11 +3700,20 @@ bool wxGLPanel::RedoStroke() {
 	bool skip = (!gls.IsValidMesh(m));
 	bool ret = strokeManager->forwardStroke(skip);
 	TweakStroke* curStroke = strokeManager->GetCurStateStroke();
-	if (!skip) {
-		if (ret && curStroke->BrushType() != TBT_MASK) {
-			((OutfitStudio*)notifyWindow)->ActiveShapeUpdated(curStroke);
-			if (curStroke->BrushType() == TBT_XFORM) {
+	if (!skip && ret) {
+		OutfitStudio* os = (OutfitStudio*)notifyWindow;
+		if (curStroke->BrushType() != TBT_MASK) {
+			os->ActiveShapeUpdated(curStroke);
+			if (curStroke->BrushType() == TBT_XFORM)
 				ShowTransformTool(true, false);
+		}
+		if (curStroke->BrushType() == TBT_WEIGHT) {
+			wxArrayTreeItemIds selItems;
+			os->outfitBones->GetSelections(selItems);
+			if (selItems.size() > 0) {
+				string selectedBone = os->outfitBones->GetItemText(selItems.front());
+				int boneScalePos = ((wxSlider*)FindWindowByName("boneScale"))->GetValue();
+				os->Proj->ApplyBoneScale(selectedBone, boneScalePos);
 			}
 		}
 	}
@@ -3759,20 +3873,20 @@ void wxGLPanel::OnMouseMove(wxMouseEvent& event) {
 			gls.ShowCursor(false);
 		}
 
+		OutfitStudio* os = (OutfitStudio*)notifyWindow;
 		if (cursorExists) {
 			if (bWeightPaint)
-				((OutfitStudio*)notifyWindow)->statusBar->SetStatusText(wxString::Format("Vertex: %d, Weight: %g", t, w), 1);
+				os->statusBar->SetStatusText(wxString::Format("Vertex: %d, Weight: %g", t, w), 1);
 			else if (bMaskPaint)
-				((OutfitStudio*)notifyWindow)->statusBar->SetStatusText(wxString::Format("Vertex: %d, Mask: %g", t, m), 1);
+				os->statusBar->SetStatusText(wxString::Format("Vertex: %d, Mask: %g", t, m), 1);
 			else {
-				OutfitStudio* main = (OutfitStudio*)notifyWindow;
 				vector<vec3> verts;
-				main->Proj->GetLiveVerts(main->activeItem->shapeName, verts, main->activeItem->bIsOutfitShape);
-				main->statusBar->SetStatusText(wxString::Format("Vertex: %d, X: %.5f Y: %.5f Z: %.5f", t, verts[t].x, verts[t].y, verts[t].z), 1);
+				os->Proj->GetLiveVerts(os->activeItem->shapeName, verts, os->activeItem->bIsOutfitShape);
+				os->statusBar->SetStatusText(wxString::Format("Vertex: %d, X: %.5f Y: %.5f Z: %.5f", t, verts[t].x, verts[t].y, verts[t].z), 1);
 			}
 		}
 		else {
-			((OutfitStudio*)notifyWindow)->statusBar->SetStatusText("", 1);
+			os->statusBar->SetStatusText("", 1);
 		}
 		Refresh();
 	}
@@ -3825,18 +3939,15 @@ void wxGLPanel::OnLeftUp(wxMouseEvent& event) {
 
 		}
 		else {
-			// if(mBrushMode == BRUSH_SELECT) {
-			//((OutfitStudio*)GetParent())->SelectShape(gls.GetMeshName(meshID));
 			((OutfitStudio*)notifyWindow)->SelectShape(gls.GetMeshName(meshID));
-			// }
 		}
 	}
 	if (isPainting){
-		EndBrushStroke(event.GetPosition());
+		EndBrushStroke();
 		isPainting = false;
 	}
 	if (isTransforming) {
-		EndTransform(event.GetPosition());
+		EndTransform();
 		isTransforming = false;
 	}
 
@@ -3846,7 +3957,7 @@ void wxGLPanel::OnLeftUp(wxMouseEvent& event) {
 
 void wxGLPanel::OnCaptureLost(wxMouseCaptureLostEvent& WXUNUSED(event)) {
 	if (isPainting) {
-		EndBrushStroke(wxPoint(0, 0));
+		EndBrushStroke();
 		isPainting = false;
 	}
 	isLDragging = false;
