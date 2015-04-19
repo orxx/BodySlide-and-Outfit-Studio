@@ -21,7 +21,7 @@ int SliderSetGroupCollection::LoadGroups(const string& basePath) {
 			}
 		}
 	}
-	return finder.lastError() ? 1 : 0;
+	return finder.hadError() ? 1 : 0;
 }
 
 int SliderSetGroupCollection::GetAllGroups(set<string>& outGroups) {

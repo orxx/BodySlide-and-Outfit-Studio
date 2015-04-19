@@ -1,52 +1,66 @@
 #pragma once
 
-#include <boost/filesystem.hpp>
-#include "Portability.h"
+#include <string>
+
+#ifdef _WIN32
+
+#include "stdafx.h"
 
 class XmlFinder {
 public:
-	explicit XmlFinder(const std::string& path) {
-		boost::filesystem::path fspath(path);
-		iter = directory_iterator(path, error);
-		if (error) {
-			iter = directory_iterator();
-			return;
-		}
-		advanceUntilXml();
-	}
+	explicit XmlFinder(const std::string& path);
+	virtual ~XmlFinder();
 
 	bool atEnd() const {
-		return iter == directory_iterator();
+		return hfind == INVALID_HANDLE_VALUE;
 	}
 
-	std::string next() {
-		std::string path = iter->path().native();
-		++iter;
-		advanceUntilXml();
-		return path;
-	}
+	std::string next();
 
-	boost::system::error_code lastError() const {
+	bool hadError() const {
 		return error;
 	}
 
 private:
-	typedef boost::filesystem::directory_iterator directory_iterator;
-	void advanceUntilXml() {
-		while (iter != directory_iterator()) {
-			if (iter->status().type() ==
-			    boost::filesystem::regular_file &&
-			    iter->path().extension() == ".xml") {
-				break;
-			}
-			iter.increment(error);
-			if (error) {
-				iter = directory_iterator();
-				break;
-			}
-		}
+	void advanceUntilXml();
+	void close();
+
+	WIN32_FIND_DATAA wfd;
+	HANDLE hfind;
+	std::string basePath;
+	bool error{false};
+};
+
+#else
+
+#include <dirent.h>
+
+class XmlFinder {
+public:
+	explicit XmlFinder(const std::string& path);
+	virtual ~XmlFinder();
+
+	bool atEnd() const {
+		return (dir == nullptr);
 	}
 
-	boost::system::error_code error;
-	directory_iterator iter;
+	std::string next() {
+		std::string path(dirPath + ent->d_name);
+		advanceUntilXml();
+		return path;
+	}
+
+	bool hadError() const {
+		return error;
+	}
+
+private:
+	void advanceUntilXml();
+	void close();
+
+	int error{0};
+	DIR* dir{nullptr};
+	struct dirent* ent{nullptr};
+	std::string dirPath;
 };
+#endif
