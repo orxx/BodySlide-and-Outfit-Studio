@@ -1,28 +1,29 @@
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <system_error>
-#include <boost/filesystem/path.hpp>
-
-inline std::string NativePath(std::string path) {
-    // Replace backslashes with slashes, to convert a potential Windows-style
-    // path to boost::filesystem's generic path format.  (Unfortunately
-    // boost::filesystem doesn't seem to provide a built-in way to do this on
-    // its own.)
-    std::replace(path.begin(), path.end(), '\\', '/');
-    // Now use boost::filesystem::path::native()
-    return boost::filesystem::path(path).native();
-}
 
 inline std::string PathBaseName(std::string path) {
+#ifdef _WIN32
+    auto n = path.rfind('\\');
+#else
     std::replace(path.begin(), path.end(), '\\', '/');
-    // Now use boost::filesystem::path::native()
-    return boost::filesystem::path(path).filename().native();
+    auto n = path.rfind('/');
+#endif
+    if (n == std::string::npos) {
+        return path;
+    }
+    return path.substr(n + 1);
 }
 
 #ifdef _WIN32
 
 #include "stdafx.h"
+
+inline std::string NativePath(std::string path) {
+    return path;
+}
 
 inline void ThrowSysError(const std::string& what) {
 	throw std::system_error(GetLastError(), std::system_category(), what);
@@ -78,6 +79,11 @@ inline bool IsRegularFile(const char* path) {
 #define _stricmp strcasecmp
 #define _strnicmp strncasecmp
 #define WINAPI
+
+inline std::string NativePath(std::string path) {
+    std::replace(path.begin(), path.end(), '\\', '/');
+    return path;
+}
 
 inline void ThrowSysError(const std::string& what) {
 	throw std::system_error(errno, std::system_category(), what);

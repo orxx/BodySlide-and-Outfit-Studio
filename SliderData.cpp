@@ -615,7 +615,7 @@ bool PresetCollection::LoadPresets(const string& basePath, const string& sliderS
 			e = e->NextSiblingElement("Preset");
 		}
 	}
-	return !finder.lastError();
+	return !finder.hadError();
 }
 
 int PresetCollection::SavePreset(const string& filePath, const string& presetName, const string& sliderSetName, vector<string>& assignGroups) {

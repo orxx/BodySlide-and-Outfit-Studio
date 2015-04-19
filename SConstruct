@@ -44,6 +44,7 @@ srcs = [
     'SliderManager.cpp',
     'TweakBrush.cpp',
     'wxStateButton.cpp',
+    'XmlFinder.cpp',
 
     'tinystr.cpp',
     'tinyxml.cpp',
@@ -72,9 +73,6 @@ env.Append(CPPPATH=wx_include_paths)
 env.Append(CPPDEFINES=wx_defines)
 env.Append(CPPDEFINES=wx_defines_dict)
 env.Append(LIBS=wx_libs)
-
-boost_libs = ['boost_filesystem', 'boost_system']
-env.Append(LIBS=boost_libs)
 
 gl_libs = ['GL', 'GLEW', 'GLU', 'SOIL']
 env.Append(LIBS=gl_libs)

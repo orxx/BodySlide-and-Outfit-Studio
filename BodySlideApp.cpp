@@ -3,7 +3,6 @@
 #include "PresetSaveDialog.h"
 #include "XmlFinder.h"
 
-#include <boost/filesystem/path.hpp>
 #include <wx/wx.h>
 #include <wx/progdlg.h>
 #include <algorithm>

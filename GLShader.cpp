@@ -2,6 +2,7 @@
 
 #include "Portability.h"
 
+#include <iostream>
 #include <wx/msgdlg.h>
 
 bool GLShader::initComplete = false; 

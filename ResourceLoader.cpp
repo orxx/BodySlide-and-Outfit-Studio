@@ -3,7 +3,7 @@
 #include "GLShader.h"
 #include "Portability.h"
 
-#include <boost/functional/hash.hpp>
+#include <iostream>
 
 #ifdef _WIN32
 #include "SOIL.h"
@@ -20,11 +20,9 @@ using std::string;
 
 size_t ResourceLoader::MatKeyHash::operator()(const MaterialKey& key) const {
 	std::hash<std::string> strHash;
-	size_t ret = 0;
-	boost::hash_combine(ret, strHash(std::get<0>(key)));
-	boost::hash_combine(ret, strHash(std::get<1>(key)));
-	boost::hash_combine(ret, strHash(std::get<2>(key)));
-	return ret;
+	return (strHash(std::get<0>(key)) ^
+		strHash(std::get<1>(key)) ^
+		strHash(std::get<2>(key)));
 }
 
 ResourceLoader::ResourceLoader() {
