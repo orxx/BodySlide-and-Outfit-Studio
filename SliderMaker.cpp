@@ -1645,10 +1645,9 @@ int SliderMaker::CreateSliderSet() {
 	string shapePath = ".\\" + genOutFolder +  promptResult + "\\";
 	string setDefFile = shapePath + promptResult + "Set.xml";
 	string shapeFile = srcfilename.substr(namestart+1);
-	GetCurrentDirectoryA(1024,buffer);
-	string pathcreate = buffer;
+	string pathcreate = GetCurDir();
 	pathcreate += "\\" + genOutFolder + promptResult ;
-		SHCreateDirectoryExA(NULL,pathcreate.c_str(),NULL);
+        CreateDir(pathcreate.c_str());
 
 	TiXmlDocument doc (setDefFile.c_str());
 	TiXmlElement* pDataFileElem;

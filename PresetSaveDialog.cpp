@@ -57,7 +57,7 @@ void PresetSaveDialog::FilterGroups(const string& filter) {
 }
 
 void PresetSaveDialog::FilterChanged(wxCommandEvent& event) {
-	string filter = event.GetString();
+	string filter = event.GetString().ToStdString();
 	FilterGroups(filter);
 }
 

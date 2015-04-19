@@ -1,5 +1,14 @@
 #include "BodySlideApp.h"
 
+#include "PresetSaveDialog.h"
+#include "XmlFinder.h"
+
+#include <boost/filesystem/path.hpp>
+#include <wx/wx.h>
+#include <wx/progdlg.h>
+#include <algorithm>
+#include <unordered_set>
+
 ConfigurationManager Config;
 
 BEGIN_EVENT_TABLE(BodySlideFrame, wxFrame)
@@ -197,59 +206,40 @@ void BodySlideApp::RefreshOutfitList() {
 }
 
 int BodySlideApp::LoadSliderSets() {
-	WIN32_FIND_DATAA wfd;
-	HANDLE hfind;
-	string filename;
-	DWORD searchStatus = 0;
-	vector<string> outfitNames;
-
 	dataSets.Clear();
 	outfitNameSource.clear();
 	outfitNameOrder.clear();
 
 	//activeSet.Clear();
 
-	hfind = FindFirstFileA("SliderSets\\*.xml", &wfd);
+	XmlFinder finder("SliderSets");
+	while (!finder.atEnd()) {
+		string filename = finder.next();
 
-	if (hfind == INVALID_HANDLE_VALUE) {
-		return 3;
-	}
+		SliderSetFile sliderDoc;
+		sliderDoc.Open(filename);
 
-	while (searchStatus != ERROR_NO_MORE_FILES) {
-		if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		if (sliderDoc.fail()) {
 			continue;
-		else{
-			filename = "SliderSets\\";
-			filename += wfd.cFileName;
-
-			SliderSetFile sliderDoc;
-			sliderDoc.Open(filename);
-
-			if (!sliderDoc.fail()) {
-				sliderDoc.GetSetNamesUnsorted(outfitNames,false);
-				for (int i = 0; i < outfitNames.size(); i++) {
-					outfitNameSource[outfitNames[i]] = filename;
-					outfitNameOrder.push_back(outfitNames[i]);
-				}/*
-				if(!sliderDoc.GetSet(outfit,activeSet)) {
-					curOutfit = outfit;
-					activeSet.SetBaseDataPath(config["ShapeDataPath"]);
-
-					activeSet.LoadSetDiffData(dataSets);
-
-					sliderManager.AddSlidersInSet(activeSet, hideAll);
-					sliderManager.InitializeSliders("CBBE");
-
-				}*/
-				
-			}
-			if (!FindNextFileA(hfind, &wfd)) {
-				searchStatus = GetLastError();
-			} else 
-				searchStatus = 0;
 		}
+		vector<string> outfitNames;
+		sliderDoc.GetSetNamesUnsorted(outfitNames,false);
+		for (int i = 0; i < outfitNames.size(); i++) {
+			outfitNameSource[outfitNames[i]] = filename;
+			outfitNameOrder.push_back(outfitNames[i]);
+		}/*
+		if(!sliderDoc.GetSet(outfit,activeSet)) {
+			curOutfit = outfit;
+			activeSet.SetBaseDataPath(config["ShapeDataPath"]);
+
+			activeSet.LoadSetDiffData(dataSets);
+
+			sliderManager.AddSlidersInSet(activeSet, hideAll);
+			sliderManager.InitializeSliders("CBBE");
+
+		}*/
+				
 	}	
-	FindClose(hfind);
 		
 	ungroupedOutfits.clear();
 	for (auto o: outfitNameSource) {
@@ -437,7 +427,7 @@ void BodySlideApp::LaunchOutfitStudio() {
 	}
 }
 
-void BodySlideApp::ApplySliders(const string& targetShape, vector<Slider>& sliderSet, vector<vec3>& verts, vector<ushort>& ZapIdx, vector<vec2>* uvs) {	
+void BodySlideApp::ApplySliders(const string& targetShape, vector<Slider>& sliderSet, vector<vec3>& verts, vector<ushort>& ZapIdx, vector<vec2>* uvs) {
 	int j;
 	for (auto slider: sliderSet) {
 		float val = slider.Value;
@@ -469,6 +459,7 @@ void BodySlideApp::ApplySliders(const string& targetShape, vector<Slider>& slide
 }
 
 int BodySlideApp::WriteMorphTRI(const string& triPath, SliderSet& sliderSet, NifFile& nif, unordered_map<string, vector<ushort>> zapIndices) {
+#if 0
 	DiffDataSets currentDiffs;
 	sliderSet.LoadSetDiffData(currentDiffs);
 
@@ -516,23 +507,42 @@ int BodySlideApp::WriteMorphTRI(const string& triPath, SliderSet& sliderSet, Nif
 		return false;
 
 	return true;
+#else
+        // ousnius didn't seem to include TriFile.h/.cpp in his latest commit
+        return false;
+#endif
 }
 
 void BodySlideApp::ShowPreview(char PreviewType) {
-	if (PreviewType == SMALL_PREVIEW && preview0 != NULL) 
+	PreviewWindow** winPtr =
+		(PreviewType == SMALL_PREVIEW) ? &preview0 : &preview1;
+	if (*winPtr != NULL)
 		return;
-	if (PreviewType == BIG_PREVIEW && preview1 != NULL) 
+
+#ifdef _WIN32
+	*winPtr = new PreviewWindow((HWND)sliderView->GetHWND(), PreviewType);
+	InitPreview(PreviewType);
+#else
+	*winPtr = new PreviewWindow(this, PreviewType);
+#endif
+}
+
+void BodySlideApp::InitPreview(char PreviewType) {
+	PreviewWindow* win =
+		(PreviewType == SMALL_PREVIEW) ? preview0 : preview1;
+	if (win == NULL)
 		return;
 	
 	string inputFileName;
 	bool freshload = false;
-	inputFileName = activeSet.GetInputFileName();
+	inputFileName = NativePath(activeSet.GetInputFileName());
 
 	if (previewBaseNif == NULL) {
 		previewBaseNif = new NifFile;
 		previewBaseNif->Load(inputFileName);
 		previewBaseName = inputFileName;
 		if (PreviewMod.Load(inputFileName) != 0) {
+			std::cerr << "error loading " << inputFileName << endl;
 			return;
 		}
 		freshload = true;
@@ -596,23 +606,12 @@ void BodySlideApp::ShowPreview(char PreviewType) {
 
 	vector<string> shapeNames;
 	string baseGamePath = Config["GameDataPath"];
-	if (PreviewType == SMALL_PREVIEW) {
-		preview0 = new PreviewWindow((HWND)sliderView->GetHWND(), &PreviewMod, SMALL_PREVIEW);
-		preview0->SetBaseDataPath(baseGamePath);
-		PreviewMod.GetShapeList(shapeNames);
-		for (auto s: shapeNames) {
-			preview0->AddNifShapeTexture(&PreviewMod, s);
-			preview0->Refresh();
-		}
-
-	} else  {
-		preview1 = new PreviewWindow((HWND)sliderView->GetHWND(), &PreviewMod, BIG_PREVIEW);
-		preview1->SetBaseDataPath(baseGamePath);
-		PreviewMod.GetShapeList(shapeNames);
-		for (auto s: shapeNames) {
-			preview1->AddNifShapeTexture(&PreviewMod, s);
-			preview1->Refresh();
-		}
+	win->AddMeshFromNif(&PreviewMod);
+	win->SetBaseDataPath(baseGamePath);
+	PreviewMod.GetShapeList(shapeNames);
+	for (auto s: shapeNames) {
+		win->AddNifShapeTexture(&PreviewMod, s);
+		win->Refresh();
 	}
 }
 
@@ -661,7 +660,7 @@ void BodySlideApp::UpdatePreview(char PreviewType) {
 	}
 }
 
-void  BodySlideApp::RebuildPreviewMeshes(char PreviewType) {	
+void  BodySlideApp::RebuildPreviewMeshes(char PreviewType) {
 	if (PreviewType == SMALL_PREVIEW) {
 		if (preview0 == NULL) return;
 	} else {
@@ -713,6 +712,7 @@ void  BodySlideApp::RebuildPreviewMeshes(char PreviewType) {
 }
 
 void BodySlideApp::SetDefaultConfig() {
+#if _WIN32
 	HKEY skyrimRegKey;
 	char installPath[256];
 	DWORD pathSize = 256;
@@ -729,6 +729,7 @@ void BodySlideApp::SetDefaultConfig() {
 			wxMessageBox("Could not find your Skyrim install path (registry key value). Did you launch it through the official launcher once?", "Warning");
 	} else
 		wxMessageBox("Could not find your Skyrim installation (registry key). Did you launch it through the official launcher once?", "Warning");
+#endif
 	
 	Config.SetDefaultValue("ShapeDataPath", ".\\ShapeData");
 	Config.SetDefaultValue("WarnMissingGamePath", "true");
@@ -853,7 +854,7 @@ void BodySlideApp::ApplyOutfitFilter() {
 				wxString token = tokenizer.GetNextToken();
 				token.Trim();
 				token.Trim(false);
-				string group = token;
+				string group = token.ToStdString();
 				grouplist.insert(group);
 			}
 		}
@@ -938,7 +939,7 @@ int BodySlideApp::BuildBodies(bool localPath, bool clean, bool tri) {
 	string outFileNameBig;
 
 	if (localPath) {
-		outFileNameSmall = outFileNameBig = activeSet.GetOutputFile();
+		outFileNameSmall = outFileNameBig = NativePath(activeSet.GetOutputFile());
 	}
 	else {
 		if (!Config.Exists("GameDataPath")) {
@@ -948,18 +949,17 @@ int BodySlideApp::BuildBodies(bool localPath, bool clean, bool tri) {
 					return 4;
 				}
 			}
-			char buffer[MAX_PATH];
-			GetCurrentDirectoryA(MAX_PATH, buffer);
-			string response = wxDirSelector("Please choose a directory to set as your Skyrim Data directory.", buffer);
+			string curdir = GetCurDir();
+			string response = wxDirSelector("Please choose a directory to set as your Skyrim Data directory.", curdir).ToStdString();
 			if (response.empty())
 				return 4;
 			response += "\\";
 			Config.SetValue("GameDataPath", response);
 		}
-		outFileNameSmall = Config["GameDataPath"] + activeSet.GetOutputFilePath();
+		outFileNameSmall = NativePath(Config["GameDataPath"] + activeSet.GetOutputFilePath());
 		outFileNameBig = outFileNameSmall;
 		string tmp = Config["GameDataPath"] + activeSet.GetOutputPath();
-		SHCreateDirectoryExA(NULL, tmp.c_str(), NULL);
+		CreateDir(NativePath(tmp).c_str());
 	}
 
 	// ALT key
@@ -1033,6 +1033,7 @@ int BodySlideApp::BuildBodies(bool localPath, bool clean, bool tri) {
 		ZapIdxAll[it->second] = ZapIdx;
 	}
 
+#ifdef _WIN32
 	/* Add RaceMenu TRI path for in-game morphs */
 	if (tri) {
 		string triPath = activeSet.GetOutputFilePath() + ".tri";
@@ -1055,6 +1056,14 @@ int BodySlideApp::BuildBodies(bool localPath, bool clean, bool tri) {
 			}
 		}
 	}
+#else
+	// FIXME
+        // Disabled for now, mostly since gcc-4.8 doesn't have good support
+        // for C++11 regex functionality, and I haven't bothered to change the
+        // code to use boost::filesystem::path code instead.
+        // The WriteMorphTRI() code doesn't do anything right now since
+        // TriFile.h doesn't exist in ousnius' github repository.
+#endif
 	
 	string saved1;
 	string saved2;
@@ -1136,9 +1145,8 @@ int BodySlideApp::BuildListBodies(const vector<string>& outfitList, map<string, 
 				if (ret != wxYES)
 					return 1;
 			}
-			char buffer[MAX_PATH];
-			GetCurrentDirectoryA(MAX_PATH, buffer);
-			Config.SetValue("GameDataPath", string(buffer) + "\\");
+			string curdir = GetCurDir();
+			Config.SetValue("GameDataPath", curdir + "\\");
 		}
 		datapath = Config["GameDataPath"];
 	}
@@ -1290,9 +1298,10 @@ int BodySlideApp::BuildListBodies(const vector<string>& outfitList, map<string, 
 		/* Create directory for the outfit */
 		string dir = datapath + currentSet.GetOutputPath();
 		stringstream errss;
-		int error = SHCreateDirectoryExA(NULL, dir.c_str(), NULL);
-		if ((error != ERROR_SUCCESS) && (error != ERROR_ALREADY_EXISTS) && (error != ERROR_FILE_EXISTS)) {
-			errss << "Unable to create destination directory: " << dir << " [" << hex << (unsigned int)error << "]";
+		try {
+		    EnsureDir(dir.c_str());
+		} catch (const std::exception& ex) {
+			errss << "Unable to create destination directory: " << dir << ex.what();
 			failedOutfits[outfit] = errss.str();
 			continue;
 		}
@@ -1300,6 +1309,7 @@ int BodySlideApp::BuildListBodies(const vector<string>& outfitList, map<string, 
 		outFileNameSmall = datapath + currentSet.GetOutputFilePath();
 		outFileNameBig = outFileNameSmall;
 
+#ifdef _WIN32
 		/* Add RaceMenu TRI path for in-game morphs */
 		if (triEnd) {
 			string triPath = currentSet.GetOutputFilePath() + ".tri";
@@ -1322,17 +1332,24 @@ int BodySlideApp::BuildListBodies(const vector<string>& outfitList, map<string, 
 				}
 			}
 		}
+#else
+		// FIXME
+		// TriFile code isn't committed,
+		// and gcc 4.8 doesn't support std::regex yet.
+#endif
 
 		/* Set filenames for the outfit */
 		if (currentSet.GenWeights()) {
 			outFileNameSmall += "_0.nif";
 			outFileNameBig += "_1.nif";
-			if ((error = nifBig.Save(outFileNameBig)) != 0) {
+			int error = nifBig.Save(outFileNameBig);
+			if (error != 0) {
 				errss << "Unable to save nif file: " << outFileNameBig << " [" << hex << (unsigned int)error << "]";
 				failedOutfits[outfit] = errss.str();
 				continue;
 			}
-			if (nifSmall.Save(outFileNameSmall)) {
+			error = nifSmall.Save(outFileNameSmall);
+			if (error) {
 				errss << "Unable to save nif file: " << outFileNameSmall << " [" << hex << (unsigned int)error << "]";
 				failedOutfits[outfit] = errss.str();
 				continue;
@@ -1340,7 +1357,8 @@ int BodySlideApp::BuildListBodies(const vector<string>& outfitList, map<string, 
 		}
 		else {
 			outFileNameBig += ".nif";
-			if (nifBig.Save(outFileNameBig)) {
+			int error = nifBig.Save(outFileNameBig);
+			if (error) {
 				errss << "Unable to save nif file: " << outFileNameBig << " [" << hex << (unsigned int)error << "]";
 				failedOutfits[outfit] = errss.str();
 				continue;
@@ -1385,12 +1403,12 @@ BodySlideFrame::BodySlideFrame(BodySlideApp* app, const wxString &title, const w
 	wxXmlResource* rsrc = wxXmlResource::Get();
 	bool loaded;
 	rsrc->InitAllHandlers();
-	loaded = rsrc->Load("res\\BodyslideFrame.xrc");
+	loaded = rsrc->Load(NativePath("res/BodyslideFrame.xrc"));
 	if (!loaded) 
 		return;
 	rsrc->LoadFrame(this, GetParent(), "BodyslideFrame");
 
-	this->SetIcon(wxIcon("res\\outfitstudio.png", wxBITMAP_TYPE_PNG));
+	this->SetIcon(wxIcon(NativePath("res/outfitstudio.png"), wxBITMAP_TYPE_PNG));
 	this->SetDoubleBuffered(true);
 
 	batchBuildList = NULL;
@@ -1460,7 +1478,7 @@ void BodySlideFrame::AddCategorySliderUI(const wxString& name, bool show, bool o
 	if (!oneSize) {
 		sliderLayout->AddSpacer(0);
 
-		w = new wxPanel(sw, -1, -1, -1, -1);
+		w = new wxPanel(sw);
 		w->SetBackgroundColour(wxColor(90, 90, 90));
 		sliderLayout->Add(w, 0, wxTOP | wxBOTTOM | wxEXPAND, 10);
 	}
@@ -1477,7 +1495,7 @@ void BodySlideFrame::AddCategorySliderUI(const wxString& name, bool show, bool o
 	sliderLayout->Add(w, 0, wxLEFT | wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 	
 	if (!oneSize) {
-		w = new wxPanel(sw, -1, -1, -1, -1);
+		w = new wxPanel(sw);
 		w->SetBackgroundColour(wxColor(90, 90, 90));
 		sliderLayout->Add(w, 0, wxTOP | wxBOTTOM | wxEXPAND, 10);
 	}
@@ -1500,8 +1518,10 @@ void BodySlideFrame::AddSliderGUI(const wxString& name, bool isZap, bool oneSize
 	
 	if (!oneSize) {
 		sd->lblSliderLo = new wxStaticText(sw, wxID_ANY, name, wxDefaultPosition, wxSize(-1, 22), wxALIGN_CENTER_HORIZONTAL);
+#ifdef _WIN32
 		sd->lblSliderLo->SetBackgroundColour(wxColor(0x40, 0x40, 0x40));
 		sd->lblSliderLo->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_SCROLLBAR));
+#endif
 		sliderLayout->Add(sd->lblSliderLo, 0, wxALIGN_CENTER_HORIZONTAL | wxLEFT, 5);
 
 		if (isZap) {
@@ -1525,8 +1545,10 @@ void BodySlideFrame::AddSliderGUI(const wxString& name, bool isZap, bool oneSize
 	}
 
 	sd->lblSliderHi = new wxStaticText(sw, wxID_ANY, name, wxDefaultPosition, wxSize(-1, 22), wxALIGN_CENTER_HORIZONTAL);
+#ifdef _WIN32
 	sd->lblSliderHi->SetBackgroundColour(wxColor(0x40, 0x40, 0x40));
 	sd->lblSliderHi->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_SCROLLBAR));
+#endif
 	sliderLayout->Add(sd->lblSliderHi, 0, wxALIGN_CENTER_HORIZONTAL | wxLEFT, 5);
 
 	if (isZap) {
@@ -1886,7 +1908,7 @@ void BodySlideFrame::OnSaveGroups(wxCommandEvent& WXUNUSED(event)) {
 	if (saveGroupDialog.ShowModal() == wxID_CANCEL)
 		return;
 
-	string fName = saveGroupDialog.GetPath();
+	string fName = saveGroupDialog.GetPath().ToStdString();
 	string gName;
 	int ret;
 
@@ -1959,12 +1981,17 @@ void BodySlideFrame::OnBuildBodies(wxCommandEvent& WXUNUSED(event)) {
 	if (cbRaceMenu)
 		tri = cbRaceMenu->IsChecked();
 
+#ifdef _WIN32
 	if (GetKeyState(VK_CONTROL) & 0x8000)
 		app->BuildBodies(true, false, tri);
 	else if (GetKeyState(VK_MENU) & 0x8000)
 		app->BuildBodies(false, true, tri);
 	else
 		app->BuildBodies(false, false, tri);
+#else
+	// FIXME: use wxKeyboardState
+	app->BuildBodies(false, false, tri);
+#endif
 }
 
 void BodySlideFrame::OnBatchBuild(wxCommandEvent& WXUNUSED(event)) {
@@ -1980,10 +2007,14 @@ void BodySlideFrame::OnBatchBuild(wxCommandEvent& WXUNUSED(event)) {
 	if (cbRaceMenu)
 		tri = cbRaceMenu->IsChecked();
 
+#if _WIN32
 	if (GetKeyState(VK_CONTROL) & 0x8000)
 		custpath = true;
 	else if (GetKeyState(VK_MENU) & 0x8000) // Alt
 		clean = true;
+#else
+	// FIXME: Use wxKeyboardState
+#endif
 
 	app->GetFilteredOutfits(outfitChoices);
 
@@ -2022,7 +2053,7 @@ void BodySlideFrame::OnBatchBuild(wxCommandEvent& WXUNUSED(event)) {
 	map<string, string> failedOutfits;
 	int ret;
 	if (custpath) {
-		string path = wxDirSelector("Choose a folder to contain the saved files");
+		string path = wxDirSelector("Choose a folder to contain the saved files").ToStdString();
 		if (path.empty()) 
 			return;
 		ret = app->BuildListBodies(toBuild, failedOutfits, false, tri, path + "\\");
@@ -2080,6 +2111,7 @@ void BodySlideFrame::OnSetSize(wxSizeEvent& event) {
 	event.Skip();
 }
 
+#ifdef _WIN32
 long BodySlideFrame::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam) {
 	switch (nMsg) {
 	case MSG_PREVIEWCLOSING:
@@ -2095,3 +2127,4 @@ long BodySlideFrame::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam
 	}
 	return wxFrame::MSWWindowProc(nMsg, wParam, lParam);
 }
+#endif

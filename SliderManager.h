@@ -6,9 +6,8 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
-#include "niffile.h"
-#include "diffdata.h"
-#include "Commctrl.h"
+#include "NifFile.h"
+#include "DiffData.h"
 #include "SliderData.h"
 
 using namespace std;

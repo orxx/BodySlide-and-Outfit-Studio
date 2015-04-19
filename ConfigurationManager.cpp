@@ -416,13 +416,13 @@ void ConfigurationManager::SetValue(const string& name, const string& newValue, 
 
 void ConfigurationManager::SetValue(const string& name, int newValue, bool flagDefault) {
 	char intStr[24];
-	_snprintf_s(intStr, 24, 24, "%d", newValue);
+	snprintf(intStr, 24, "%d", newValue);
 	SetValue(name, string(intStr), flagDefault);
 }
 
 void ConfigurationManager::SetValue(const string& name, float newValue, bool flagDefault) {
 	char intStr[24];
-	_snprintf_s(intStr, 24, 24, "%0.5f", newValue);
+	snprintf(intStr, 24, "%0.5f", newValue);
 	SetValue(name, string(intStr), flagDefault);
 }
 

@@ -3,10 +3,9 @@
 //#define _HAS_ITERATOR_DEBUGGING 0
 #include <string>
 #include <map>
-#include <hash_map>
 #include <unordered_map>
 #include <vector>
-#include "niffile.h"
+#include "NifFile.h"
 
 using namespace std;
 
@@ -97,3 +96,12 @@ public:
 		dataTargets.clear();
 	}
 };
+
+// Set == slider name, target == shape name.
+bool DiffDataSets::TargetMatch(const string& set, const string& target) {
+	auto it = dataTargets.find(set);
+	if (it != dataTargets.end()) {
+		return it->second == target;
+	}
+	return false;
+}

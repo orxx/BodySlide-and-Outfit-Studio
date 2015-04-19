@@ -1,28 +1,45 @@
 #pragma once
 
 //#define _HAS_ITERATOR_DEBUGGING 0
+
+#ifdef _WIN32
 #include <windows.h>
-#include <gl/gl.h>
-#include <gl/glu.h>
-#include <gl/glext.h>
-#include <gl/wglext.h>
-#include "glshader.h"
+#else // !_WIN32
+// glew.h must be included before any other OpenGL includes
+#include <GL/glew.h>
+#include <wx/frame.h>
+#include <wx/glcanvas.h>
+#endif // !_WIN32
+
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glext.h>
+#include "GLShader.h"
 #include "NifFile.h"
 #include "Object3d.h"
 #include "KDMatcher.h"
 #include "Mesh.h"
+#include "ResourceLoader.h"
 #include "TweakBrush.h"
 #include <string>
 #include <vector>
-#include <hash_map>
+
+#ifdef _WIN32
+#include <GL/wglext.h>
+#endif
 
 using namespace std;
 
 class GLSurface
 {
+#ifdef _WIN32
 	HWND hOwner;
 	HGLRC hRC;
 	HDC hDC;
+#else
+        wxGLCanvas* canvas{nullptr};
+        wxGLContext* context{nullptr};
+#endif
 
 	float mFov;
 	vec3 camPos;
@@ -49,8 +66,7 @@ class GLSurface
 	float defPointSize;
 	float cursorSize;
 
-	vector<GLMaterial*> materials;
-	unordered_map<string, int> texMats;
+	ResourceLoader resLoader;
 
 	//GLuint defTex;
 
@@ -63,8 +79,9 @@ class GLSurface
 	vector<mesh*> overlays;
 	int activeMesh;
 
+	int CommonInit(bool bUseDefaultShaders);
 	void initLighting();
-	void initMaterial(vec3& diffusecolor);
+	void initMaterial(const vec3& diffusecolor);
 
 	void DeleteMesh(int meshID) {
 		if (meshID < meshes.size()) {
@@ -205,13 +222,20 @@ public:
 	void SetCursorSize(float newsize) {
 		cursorSize = newsize;
 	}
+#ifdef _WIN32
 	bool IsWGLExtensionSupported(char* szTargetExtension, HDC refDC);
+#endif
 	bool IsExtensionSupported(char* szTargetExtension);
 	bool MultiSampleQueried() {
 		return (multisampleState > 0);
 	}
+#ifdef _WIN32
 	bool QueryMultisample(HWND queryWnd);		// must be a throwaway window, do not use the same hwnd as final context.
 	int Initialize(HWND parentWnd, bool bUseDefaultShaders = true);
+#else // !_WIN32
+	int Initialize(wxGLCanvas* canvas, wxGLContext* context,
+                       bool bUseDefaultShaders = true);
+#endif // _WIN32
 	void Begin();
 	void Cleanup();
 
@@ -235,15 +259,20 @@ public:
 	// are ignored if the ray is provided.
 	bool CollideMesh(int ScreenX, int ScreenY, vec3& outOrigin, vec3& outNormal, int* outFacet = NULL, vec3* inRayDir = 0, vec3* inRayOrigin = 0);
 
-	bool CollidePlane(int ScreenX, int ScreenY, vec3& outOrigin, vec3& inPlaneNormal, float inPlaneDist);
+	bool CollidePlane(int ScreenX, int ScreenY, vec3& outOrigin, const vec3& inPlaneNormal, float inPlaneDist);
 
 	int CollideOverlay(int ScreenX, int ScreenY, vec3& outOrigin, vec3& outNormal, int* outFacet = NULL, vec3* inRayDir = 0, vec3* inRayOrigin = 0);
 
 
 	int AddVisRay(vec3& start, vec3& direction, float length);
-	int AddVisCircle(vec3& center, vec3& normal, float radius, const string& name = "RingMesh");
-	int AddVis3dRing(vec3& center, vec3& normal, float holeRadius, float ringRadius, vec3& color, const string& name = "XRotateMesh");
-	int AddVis3dArrow(vec3& origin, vec3& direction, float stemRadius, float pointRadius, float length, vec3& color, const string& name = "XMoveMesh");
+	int AddVisCircle(const vec3& center, const vec3& normal, float radius,
+			 const string& name = "RingMesh");
+	int AddVis3dRing(const vec3& center, const vec3& normal,
+			 float holeRadius, float ringRadius,
+			 const vec3& color, const string& name = "XRotateMesh");
+	int AddVis3dArrow(const vec3& origin, const vec3& direction,
+			  float stemRadius, float pointRadius, float length,
+			  const vec3& color, const string& name = "XMoveMesh");
 	int AddVisPoint(vec3& p, const string& name = "PointMesh");
 	int AddVisTri(vec3& p1, vec3& p2, vec3& p3, const string& name = "TriMesh");
 	int AddVisFacets(vector<int>& triIDs, const string& name = "TriMesh");
@@ -272,7 +301,7 @@ public:
 
 	RenderMode SetMeshRenderMode(const string& name, RenderMode mode);
 
-	int AddMaterial(const string& textureFile, const string& vShaderFile, const string& fShaderFile);
+	GLMaterial* AddMaterial(const string& textureFile, const string& vShaderFile, const string& fShaderFile);
 
 	int TestRender();
 	int RenderOneFrame();
@@ -284,8 +313,8 @@ public:
 		else
 			bTextured = true;
 		for (int i = 0; i < meshes.size(); i++) {
-			if (meshes[i]->MatRef >= 0 && (activeMesh > -1)) {
-				materials[meshes[i]->MatRef]->shader->ShowTexture(bTextured);
+			if (meshes[i]->material && (activeMesh > -1)) {
+				meshes[i]->material->shader->ShowTexture(bTextured);
 			}
 		}
 	}
@@ -304,8 +333,8 @@ public:
 			bLighting = true;
 
 		for (int i = 0; i < meshes.size(); i++) {
-			if (meshes[i]->MatRef >= 0 && (activeMesh > -1)) {
-				materials[meshes[i]->MatRef]->shader->EnableVertexLighting(bLighting);
+			if (meshes[i]->material && (activeMesh > -1)) {
+				meshes[i]->material->shader->EnableVertexLighting(bLighting);
 			}
 		}
 	}
@@ -317,8 +346,8 @@ public:
 			bMaskVisible = true;
 
 		for (int i = 0; i < meshes.size(); i++) {
-			if (meshes[i]->MatRef >= 0 && (activeMesh > -1)) {
-				materials[meshes[i]->MatRef]->shader->ShowMask(bMaskVisible);
+			if (meshes[i]->material && (activeMesh > -1)) {
+				meshes[i]->material->shader->ShowMask(bMaskVisible);
 			}
 		}
 	}
@@ -327,8 +356,8 @@ public:
 		bWeightColors = bVisible;
 
 		for (int i = 0; i < meshes.size(); i++) {
-			if (meshes[i]->MatRef >= 0 && (activeMesh > -1)) {
-				materials[meshes[i]->MatRef]->shader->ShowWeight(bWeightColors);
+			if (meshes[i]->material && (activeMesh > -1)) {
+				meshes[i]->material->shader->ShowWeight(bWeightColors);
 			}
 		}
 	}
@@ -338,7 +367,7 @@ public:
 			bWeightColors = false;
 		else
 			bWeightColors = true;
-		if (meshes.size() > 0 && (activeMesh > -1))
-			materials[meshes[activeMesh]->MatRef]->shader->ShowWeight(bWeightColors);
+		if (meshes.size() > 0 && (activeMesh > -1) && meshes[activeMesh]->material)
+			meshes[activeMesh]->material->shader->ShowWeight(bWeightColors);
 	}
 };

@@ -3,6 +3,7 @@
 // are changed infrequently
 //
 
+#ifdef _WIN32
 #pragma once
 #pragma warning (disable : 4018; disable : 4800; disable : 4244; disable : 4305; disable : 4018; disable : 4996)
 
@@ -18,6 +19,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 // Windows Header Files:
 #include <windows.h>
+#include <ShlObj.h>
 
 // C RunTime Header Files
 #include <stdlib.h>
@@ -37,3 +39,5 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define char_t char
 #endif
 // TODO: reference additional headers your program requires here
+
+#endif // _WIN32

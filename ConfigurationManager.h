@@ -3,6 +3,7 @@
 #include <vector>
 #include <unordered_map>
 #include "tinyxml.h"
+#include "Portability.h"
 
 using namespace std;
 

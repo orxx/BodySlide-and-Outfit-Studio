@@ -5,9 +5,10 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
-#include "object3d.h"
+#include "Object3d.h"
 #include <fstream>
 #include "AsyncMonitor.h"
+#include "Portability.h"
 
 using namespace std;
 
@@ -41,8 +42,8 @@ public:
 	ObjFile(void);
 	~ObjFile(void);
 
-	void SetScale(vec3& inScale) { scale = inScale; }
-	void SetOffset(vec3& inOffset) { offset = inOffset; }
+	void SetScale(const vec3& inScale) { scale = inScale; }
+	void SetOffset(const vec3& inOffset) { offset = inOffset; }
 
 	int LoadForNif(const string& inFn,const string& groupName = "");
 	int LoadForNif(fstream& base,const string& groupName = "");
@@ -66,6 +67,8 @@ public:
 		_asyncFN = inFn;
 		_asyncGN = groupName;
 
-		monitor->threadHandle = _beginthreadex(NULL, 0, _startAsyncLoad, (void*)this, 0, NULL);		
+		monitor->threadHandle = std::thread(_startAsyncLoad, (void*)this);		
+		// Currently AsyncMonitor never joins, so detach
+		monitor->threadHandle.detach();
 	}
 };

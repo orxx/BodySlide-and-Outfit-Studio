@@ -1,4 +1,6 @@
 #include "NifFile.h"
+
+#include "Portability.h"
 #include <queue>
 
 NifFile::NifFile() {
@@ -219,12 +221,9 @@ int NifFile::Load(const string& filename) {
 	unsigned short thisBlockTypeId;
 	Clear();
 
-	fstream file(filename.c_str(), ios_base::in | ios_base::binary);
+	fstream file(NativePath(filename).c_str(), ios_base::in | ios_base::binary);
 	if (file.is_open()) {
-		if (filename.rfind("\\") != string::npos)
-			fileName = filename.substr(filename.rfind("\\"));
-		else
-			fileName = filename;
+		fileName = PathBaseName(filename);
 		hdr.Get(file, hdr);
 		if (hdr.verStr[0] == 0) {
 			isValid = false;
@@ -492,9 +491,13 @@ void NifFile::TrimTexturePaths() {
 		if (shader) {
 			for (int i = 0; i < 9; i++) {
 				GetTextureForShape(s, tFile, i);
+#ifdef _WIN32
 				tFile = regex_replace(tFile, regex("/+|\\\\+"), "\\"); // Replace multiple slashes or forward slashes with one backslash
 				tFile = regex_replace(tFile, regex(".*textures\\\\", regex_constants::icase), ""); // Remove everything before and including the texture path
 				tFile = regex_replace(tFile, regex("AstridBody", regex_constants::icase), "femalebody_1"); // Change astrid body to femalebody_1
+#else
+                                // FIXME
+#endif
 				SetTextureForShape(s, tFile, i);
 			}
 		}
@@ -1012,7 +1015,7 @@ void NifFile::CopyShape(const string& shapeDest, NifFile& srcNif, const string& 
 }
 
 int NifFile::Save(const string& filename) {
-	fstream file(filename.c_str(), ios_base::out | ios_base::binary);
+	fstream file(NativePath(filename).c_str(), ios_base::out | ios_base::binary);
 	if (file.is_open()) {
 		hdr.Put(file, hdr);
 		for (int i = 0; i < hdr.numBlocks; i++)
@@ -1030,7 +1033,7 @@ int NifFile::Save(const string& filename) {
 }
 
 int NifFile::ExportShapeObj(const string& filename, const string& shape, float scale, vector3 offset) {
-	ofstream file(filename.c_str(), ios_base::binary);
+	ofstream file(NativePath(filename).c_str(), ios_base::binary);
 	if (file.fail())
 		return 1;
 
@@ -1133,10 +1136,10 @@ void NifFile::RenameDuplicateShape(const string& dupedShape) {
 	char buf[10];
 	if (shape) {
 		while ((shape = shapeForName(dupedShape, 1)) != NULL) {
-			_snprintf(buf, 10, "_%d", dupCount);
+			snprintf(buf, 10, "_%d", dupCount);
 			while (FindStringId(shape->shapeName + buf) != -1) {
 				dupCount++;
-				_snprintf(buf, 10, "_%d", dupCount);
+				snprintf(buf, 10, "_%d", dupCount);
 			}
 			shape->shapeName = shape->shapeName + buf;
 			shape->nameID = AddOrFindStringId(shape->shapeName);
@@ -1149,10 +1152,10 @@ void NifFile::RenameDuplicateShape(const string& dupedShape) {
 			return;
 
 		while ((strips = stripsForName(dupedShape, 1)) != NULL) {
-			_snprintf(buf, 10, "_%d", dupCount);
+			snprintf(buf, 10, "_%d", dupCount);
 			while (FindStringId(strips->shapeName + buf) != -1) {
 				dupCount++;
-				_snprintf(buf, 10, "_%d", dupCount);
+				snprintf(buf, 10, "_%d", dupCount);
 			}
 			strips->shapeName = strips->shapeName + buf;
 			strips->nameID = AddOrFindStringId(strips->shapeName);
@@ -1913,7 +1916,7 @@ void NifFile::GetRootTranslation(vector3& outVec) {
 		outVec.Zero();
 }
 
-void NifFile::SetRootTranslation(vector3& newTrans) {
+void NifFile::SetRootTranslation(const vector3& newTrans) {
 	NifBlockNiNode* root = dynamic_cast<NifBlockNiNode*>(blocks[0]);
 	if (root)
 		root->translation = newTrans;
@@ -1952,7 +1955,7 @@ void NifFile::GetShapeTranslation(const string& shapeName, vector3& outVec) {
 	//	outVec.Zero();
 }
 
-void NifFile::SetShapeTranslation(const string& shapeName, vector3& newTrans) {
+void NifFile::SetShapeTranslation(const string& shapeName, const vector3& newTrans) {
 	NifBlockTriShape* shape = shapeForName(shapeName);
 	if (!shape) {
 		NifBlockTriStrips* strips = stripsForName(shapeName);

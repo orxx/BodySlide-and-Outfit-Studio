@@ -1,14 +1,9 @@
 #include "Object3d.h"
 
-vec3& vec3::operator =(const vtx& other) {	 
+vec3::vec3(const vtx& other) {
 	x = other.x;
 	y = other.y;
 	z = other.z;
-	return (*this);
-}	
-vec3& vec3::operator += (const vtx& other) {
-	x += other.x; y += other.y; z += other.z;
-	return (*this);
 }
 
 tri::tri() {

@@ -91,7 +91,7 @@ void wxStateButton::mouseDown(wxMouseEvent& event) {
     m_bChecked = true;
 	wxCommandEvent evt(wxEVT_COMMAND_BUTTON_CLICKED, GetId());
 	evt.SetEventObject(this);
-	ProcessCommand(evt);
+	ProcessEvent(evt);
 	//paintNow();
 	//event.Skip();
 }

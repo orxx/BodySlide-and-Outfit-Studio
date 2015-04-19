@@ -34,10 +34,18 @@ public:
 };
 
 
-class wxGLPanel : public wxPanel 
+#ifdef _WIN32
+class wxGLPanel : public wxPanel
+#else
+class wxGLPanel : public wxGLCanvas
+#endif
 {
 public:
+#ifdef _WIN32
 	wxGLPanel(wxWindow* parent, const wxSize& size);
+#else
+	wxGLPanel(wxWindow* parent, const wxSize& size, int* attribs);
+#endif
 
 	void SetNotifyWindow(wxWindow* win);
 
@@ -75,12 +83,12 @@ public:
 		return activeBrush;
 	}
 
-	bool StartBrushStroke(wxPoint& screenPos);
-	void UpdateBrushStroke(wxPoint& screenPos);
+	bool StartBrushStroke(const wxPoint& screenPos);
+	void UpdateBrushStroke(const wxPoint& screenPos);
 	void EndBrushStroke();
 
-	bool StartTransform(wxPoint& screenPos);
-	void UpdateTransform(wxPoint& screenPos);
+	bool StartTransform(const wxPoint& screenPos);
+	void UpdateTransform(const wxPoint& screenPos);
 	void EndTransform();
 
 	bool UndoStroke();
@@ -279,6 +287,7 @@ public:
 
 
 private:
+        void OnShown();
 	void OnPaint(wxPaintEvent& event);
 	void OnEraseBackground(wxEraseEvent& event);
 	void OnSize(wxSizeEvent& event);
@@ -300,6 +309,9 @@ private:
 	void OnCaptureLost(wxMouseCaptureLostEvent& event);
 
 	GLSurface gls;
+#ifndef _WIN32
+	wxGLContext* context;
+#endif
 
 	bool rbuttonDown;
 	bool lbuttonDown;
@@ -307,6 +319,7 @@ private:
 	bool isLDragging;
 	bool isMDragging;
 	bool isRDragging;
+        bool firstPaint{true};
 
 	int lastX;
 	int lastY;
@@ -756,6 +769,10 @@ private:
 	void OnEraseBackground(wxEraseEvent& WXUNUSED(event)) {
 		int a;
 		a = 1;
+	}
+
+	wxBitmap LoadPNG(const std::string& path) {
+		return wxBitmap(NativePath(path), wxBITMAP_TYPE_PNG);
 	}
 
     // any class wishing to process wxWidgets events must use this macro

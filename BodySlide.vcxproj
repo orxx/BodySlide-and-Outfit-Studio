@@ -121,11 +121,13 @@
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="NifBlock.cpp" />
     <ClCompile Include="NifFile.cpp" />
+    <ClCompile Include="Object3d.cpp" />
     <ClCompile Include="ObjFile.cpp" />
     <ClCompile Include="OutfitProject.cpp" />
     <ClCompile Include="OutfitStudio.cpp" />
     <ClCompile Include="PresetSaveDialog.cpp" />
     <ClCompile Include="PreviewWindow.cpp" />
+    <ClCompile Include="ResourceLoader.cpp" />
     <ClCompile Include="SliderCategories.cpp" />
     <ClCompile Include="SliderData.cpp" />
     <ClCompile Include="SliderGroup.cpp" />
@@ -138,9 +140,9 @@
     <ClCompile Include="tinyxml.cpp" />
     <ClCompile Include="tinyxmlerror.cpp" />
     <ClCompile Include="tinyxmlparser.cpp" />
-    <ClCompile Include="TriFile.cpp" />
     <ClCompile Include="TweakBrush.cpp" />
     <ClCompile Include="wxStateButton.cpp" />
+    <ClCompile Include="XmlFinder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Anim.h" />
@@ -160,9 +162,11 @@
     <ClInclude Include="ObjFile.h" />
     <ClInclude Include="OutfitProject.h" />
     <ClInclude Include="OutfitStudio.h" />
+    <ClInclude Include="Portability.h" />
     <ClInclude Include="PresetSaveDialog.h" />
     <ClInclude Include="PreviewWindow.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="ResourceLoader.h" />
     <ClInclude Include="SliderCategories.h" />
     <ClInclude Include="SliderData.h" />
     <ClInclude Include="SliderGroup.h" />
@@ -171,9 +175,9 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="tinystr.h" />
     <ClInclude Include="tinyxml.h" />
-    <ClInclude Include="TriFile.h" />
     <ClInclude Include="TweakBrush.h" />
     <ClInclude Include="wxStateButton.h" />
+    <ClInclude Include="XmlFinder.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="BodySlide.ico" />

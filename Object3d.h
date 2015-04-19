@@ -1,15 +1,27 @@
 #pragma once
 
 //#define _HAS_ITERATOR_DEBUGGING 0
+
+#ifdef _WIN32
 #include <windows.h>
-#include <gl/gl.h>
-#include <gl/glu.h>
-#include <gl/glext.h>
-#include <gl/wglext.h>
+#else // !_WIN32
+// glew.h must be included before any other OpenGL includes
+#include <GL/glew.h>
+#endif // _WIN32
+
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glext.h>
+#include <cfloat>
+#include <cstring>
 #include <string>
 #include <vector>
 #include <set>
 #include <math.h>
+
+#ifdef _WIN32
+#include <GL/wglext.h>
+#endif
 
 using namespace std;
 
@@ -36,7 +48,7 @@ struct vec3 {
 	vec3(float X, float Y, float Z) {
 		x=X; y=Y; z=Z;
 	}
-	vec3(vtx& other);
+	vec3(const vtx& other);
 
 	void Zero () {
 		x=y=z=0.0f;
@@ -87,7 +99,7 @@ struct vec3 {
 		x -= other.x; y -= other.y; z -= other.z;
 		return (*this);
 	}
-	vec3 operator - (const vec3& other) {
+	vec3 operator - (const vec3& other) const {
 		vec3 tmp = (*this);
 		tmp-=other; return tmp;
 	}
@@ -95,7 +107,7 @@ struct vec3 {
 		x += other.x; y += other.y; z += other.z;
 		return (*this);
 	}
-	vec3 operator + (const vec3& other) {
+	vec3 operator + (const vec3& other) const {
 		vec3 tmp = (*this);
 		tmp+=other; return tmp;
 	}
@@ -103,7 +115,7 @@ struct vec3 {
 		x *= val; y*=val; z*=val;
 		return(*this);
 	}
-	vec3 operator * (float val) {
+	vec3 operator * (float val) const {
 		vec3 tmp = (*this);
 		tmp*=val; return tmp;
 	}
@@ -111,7 +123,7 @@ struct vec3 {
 		x /= val; y /= val; z /= val;
 		return (*this);
 	}
-	vec3 operator / (float val) {
+	vec3 operator / (float val) const {
 		vec3 tmp = (*this);
 		tmp/=val; return tmp;
 	}
@@ -128,7 +140,7 @@ struct vec3 {
 		return x*other.x + y*other.y + z*other.z;
 	}
 
-	float DistanceTo(vec3& target) {
+	float DistanceTo(const vec3& target) {
 		float dx = target.x - x;
 		float dy = target.y - y;
 		float dz = target.z - z;
@@ -752,3 +764,15 @@ struct IntersectResult {
 	vec3 HitCoord;
 	AABBTree::AABBTreeNode* bvhNode;
 };
+
+vec3& vec3::operator =(const vtx& other) {
+	x = other.x;
+	y = other.y;
+	z = other.z;
+	return (*this);
+}
+
+vec3& vec3::operator += (const vtx& other) {
+	x += other.x; y += other.y; z += other.z;
+	return (*this);
+}

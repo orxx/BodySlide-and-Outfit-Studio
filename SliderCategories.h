@@ -60,7 +60,7 @@ public:
 	int GetSliderCategory(const string& sliderName, string& outCategory);
 
 	bool GetCategoryHidden(const string& categoryName);
-	int SetCategoryHidden(string& categoryName, bool hide);
+	int SetCategoryHidden(const string& categoryName, bool hide);
 
 	int GetCategorySliders(const string& categoryName, vector<string>& outSliders, bool append = true);
 	int GetCategorySliders(const string& categoryName, unordered_set<string>& outSliders, bool append = true);

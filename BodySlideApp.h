@@ -1,6 +1,14 @@
 #pragma once
 
-#include "resource.h"
+#include "Resource.h"
+#include <wx/app.h>
+#include <wx/checkbox.h>
+#include <wx/checklst.h>
+#include <wx/frame.h>
+#include <wx/slider.h>
+#include <wx/stattext.h>
+#include <wx/timer.h>
+
 #include <wx/wxprec.h>
 #include <wx/srchctrl.h>
 #include <wx/xrc/xmlres.h>
@@ -16,7 +24,7 @@
 #include <tuple>
 #include <regex>
 
-#include "Commctrl.h"
+// #include "Commctrl.h"
 #include <string.h>
 #include "PreviewWindow.h"
 #include "DiffData.h"
@@ -26,9 +34,7 @@
 #include "SliderGroup.h"
 #include "SliderCategories.h"
 #include "ConfigurationManager.h"
-#include "PresetSaveDialog.h"
-#include "TriFile.h"
-
+// #include "TriFile.h"
 
 class BodySlideFrame;
 
@@ -68,8 +74,6 @@ class BodySlideApp :
 	void setupOutfit(const string& outfitName);
 	int createSliders(const string& outfit = "CBBE Body", bool hideAll = false);
 	int createSetSliders(const string& outfit, bool hideAll = false);
-	int saveDiffData(const string& filename, map<int,vector3>& data);
-	int loadDiffData(const string& filename, map<int,vector3>& data);
 
 public:
 	virtual ~BodySlideApp();
@@ -101,9 +105,13 @@ public:
 			stupidHack = true;
 
 		if (stupidHack && nm.EndsWith("|readout")) {
+#ifdef _WIN32
 			wxTextCtrl* e = (wxTextCtrl*)w;
 			HWND hwndEdit = e->GetHandle();
 			::SendMessage(hwndEdit, WM_CHAR, event.GetKeyCode(), event.GetRawKeyFlags());
+#else
+                        // FIXME: need to do anything here?
+#endif
 		} else {
 			event.Skip();
 		}
@@ -145,6 +153,7 @@ public:
 	int WriteMorphTRI(const string& triPath, SliderSet& sliderSet, NifFile& nif, unordered_map<string, vector<ushort>> zapIndices);
 
 	void ShowPreview(char PreviewType = SMALL_PREVIEW);
+	void InitPreview(char PreviewType = SMALL_PREVIEW);
 	void ClosePreview(char PreviewType = SMALL_PREVIEW) {
 		if (PreviewType == SMALL_PREVIEW) {
 			if (preview0)
@@ -165,16 +174,6 @@ public:
 
 	void RebuildPreviewMeshes(char PreviewType);
 
-	int CreateControls();
-
-	void SetMessage(string msg);
-
-	void MakeDiffFile(string shapesFile, string baseShapeName, string outDiffPath);
-
-	void MakeDiffFromObj(string baseShapeName, string objFile);
-
-	int BlenderNifToSkyrim();
-	
 	int BuildBodies(bool localPath = false, bool clean = false, bool tri = false);
 	int BuildListBodies(const vector<string>& outfitList, map<string, string>& failedOutfits, bool remove = false, bool tri = false, const string& custPath = "");
 	
@@ -285,7 +284,9 @@ private:
 	void OnMoveWindow(wxMoveEvent& event);
 	void OnSetSize(wxSizeEvent& event);
 
+#ifdef _WIN32
 	long MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam);
+#endif
 
 	BodySlideApp* app;
 

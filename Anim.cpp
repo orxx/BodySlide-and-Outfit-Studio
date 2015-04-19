@@ -1,6 +1,6 @@
 #include "Anim.h"
 #include <sstream>
-#include <wx\wx.h>
+#include <wx/wx.h>
 
 bool AnimInfo::AddShapeBone(const string& shape, AnimBone& boneDataRef) {
 	for (auto bone: shapeBones[shape]) { //boneList[shape]

@@ -9,11 +9,13 @@
 #include <regex>
 #include <math.h>
 #include "KDMatcher.h"
-#include "object3d.h"
+#include "Object3d.h"
 
 using namespace std;
 
+#ifdef _WIN32
 #pragma warning (disable: 4018)
+#endif
 
 #ifndef EPSILON
 	#define EPSILON (1.0E-4)
@@ -191,7 +193,7 @@ public:
 	NifBlockUnknown(unsigned int size);
 	virtual ~NifBlockUnknown();
 	void Clone(NifBlockUnknown* other);
-	void Get(fstream& file, NifBlockHeader& hdr);
+	void Get(fstream& file, const NifBlockHeader& hdr);
 	void Put(fstream& file, NifBlockHeader& hdr);
 
 };
@@ -738,12 +740,12 @@ public:
 	void CalcTangentsForShape(const string& shapeName);
 
 	void GetRootTranslation(vector3& outVec);
-	void SetRootTranslation(vector3& newTrans);
+	void SetRootTranslation(const vector3& newTrans);
 	void GetRootScale(float& outScale);
 	void SetRootScale(const float& newScale);
 
 	void GetShapeTranslation(const string& shapeName, vector3& outVec);
-	void SetShapeTranslation(const string& shapeName, vector3& newTrans);
+	void SetShapeTranslation(const string& shapeName, const vector3& newTrans);
 	void GetShapeScale(const string& shapeName, float& outScale);
 	void SetShapeScale(const string& shapeName, const float& newScale);
 	void ApplyShapeTranslation(const string& shapeName, const vector3& offset);

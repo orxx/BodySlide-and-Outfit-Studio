@@ -22,7 +22,7 @@ must not be misrepresented as being the original software.
 distribution.
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "AppControl.h"
 
 #include "Commctrl.h"
@@ -1373,7 +1373,7 @@ int AppControl::BuildBodies(bool localpath) {
 		outfilename0= config["SkyrimDataPath"] + activeSet.GetOutputFilePath();//outputpath + "\\" + outputfile;
 		outfilename1 = outfilename0;
 		string tmp = config["SkyrimDataPath"] + activeSet.GetOutputPath(); //outputpath;
-		SHCreateDirectoryEx(NULL,tmp.c_str(), NULL);
+		CreateDir(tmp.c_str());
 	}
 
 	outfilename0 += "_0.nif";
@@ -1594,7 +1594,7 @@ void AppControl::MakeDiffFile(string shapesFile, string baseShapeName, string ou
 	GetCurrentDirectory(1024,buffer);
 	string pathcreate = buffer;
 	pathcreate += "\\GenerateOutput";
-		SHCreateDirectoryEx(NULL,pathcreate.c_str(),NULL);
+        CreateDir(pathcreate.c_str());
 
 	vector<string> list;
 	nif.GetShapeList(list);

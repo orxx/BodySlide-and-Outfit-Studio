@@ -3,7 +3,7 @@
 
 #include "stdafx.h"
 #include "BodySlide.h"
-#include "appcontrol.h"
+#include "AppControl.h"
 
 #define MAX_LOADSTRING 100
 

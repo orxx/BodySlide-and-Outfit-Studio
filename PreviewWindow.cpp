@@ -22,22 +22,31 @@ must not be misrepresented as being the original software.
 distribution.
 */
 
-#include "StdAfx.h"
-#include "Windowsx.h"
 #include "PreviewWindow.h"
+
+#include "BodySlideApp.h"
+#include "Portability.h"
+#include "stdafx.h"
+
+#ifdef _WIN32
+#include "Windowsx.h"
 
 bool PreviewWindow::has_registered = false;
 
 WNDPROC OldViewProc;
+#endif
 
 PreviewWindow::PreviewWindow(void) {
 }
 
 PreviewWindow::~PreviewWindow(void) {
+#ifdef _WIN32
 	SendMessage(mHwnd, WM_DESTROY, 0, 0);
+#endif
 }
 
-PreviewWindow::PreviewWindow(HWND owner, NifFile* nif, char PreviewType, char* shapeName) {
+#ifdef _WIN32
+PreviewWindow::PreviewWindow(HWND owner, char PreviewType, char* shapeName) {
 	string title;
 	if (PreviewType == SMALL_PREVIEW) {
 		isSmall = true;
@@ -50,7 +59,6 @@ PreviewWindow::PreviewWindow(HWND owner, NifFile* nif, char PreviewType, char* s
 	hOwner = owner;
 
 	Create(title);
-	AddMeshFromNif(nif, shapeName);
 	ShowWindow(mHwnd, SW_SHOW);
 	UpdateWindow(mHwnd);
 }
@@ -63,6 +71,43 @@ PreviewWindow::PreviewWindow(HWND owner, vector<vector3>* verts, vector<triangle
 	ShowWindow(mHwnd, SW_SHOW);
 	UpdateWindow(mHwnd);
 }
+#else
+
+PreviewWindow::PreviewWindow(BodySlideApp* a, char PreviewType, char* shapeName) {
+	app = a;
+	string title;
+	if (PreviewType == SMALL_PREVIEW) {
+		isSmall = true;
+		title = "Preview: Small Size";
+	}
+	else {
+		isSmall = false;
+		title = "Preview: Large Size";
+	}
+
+	frame = new PreviewFrame(this, title);
+	int attribs[] = {
+		WX_GL_RGBA,
+		WX_GL_DOUBLEBUFFER,
+		WX_GL_MIN_RED, 8,
+		WX_GL_MIN_BLUE, 8,
+		WX_GL_MIN_GREEN, 8,
+		WX_GL_MIN_ALPHA, 8,
+		WX_GL_DEPTH_SIZE, 16,
+		WX_GL_LEVEL, 0,
+		0
+	};
+	canvas = new PreviewCanvas(this, frame, attribs);
+	context = new wxGLContext(canvas);
+	frame->Show();
+}
+
+void PreviewWindow::OnShown() {
+	gls.Initialize(canvas, context);
+	gls.SetStartingView(vec3(0, -5.0f, -15.0f), 768, 768, 65.0);
+	app->InitPreview(isSmall ? SMALL_PREVIEW : BIG_PREVIEW);
+}
+#endif // !_WIN32
 
 void PreviewWindow::AddMeshDirect(mesh* m) {
 	gls.AddMeshDirect(m);
@@ -108,8 +153,9 @@ void PreviewWindow::RefreshMeshFromNif(NifFile* nif, char* shapeName){
 			auto shader = nif->GetShaderForShape(shapeList[i]);
 			if (shader && m->smoothSeamNormals != false && !shader->IsSkinShader())
 				ToggleSmoothSeams(m);
-			if (shapeTexIds.find(shapeName) != shapeTexIds.end()) {
-				m->MatRef = shapeTexIds[shapeName];
+			auto texIter = shapeTextures.find(shapeName);
+			if (texIter != shapeTextures.end()) {
+				m->material = texIter->second;
 			} else {
 				AddNifShapeTexture(nif, string(shapeName));
 			}
@@ -123,29 +169,31 @@ void PreviewWindow::RefreshMeshFromNif(NifFile* nif, char* shapeName){
 			auto shader = nif->GetShaderForShape(shapeList[i]);
 			if (shader && m->smoothSeamNormals != false && !shader->IsSkinShader())
 				ToggleSmoothSeams(m);
-			if (shapeTexIds.find(shapeList[i]) != shapeTexIds.end()) {
-				m->MatRef = shapeTexIds[shapeList[i]];
+			auto texIter = shapeTextures.find(shapeList[i]);
+			if (texIter != shapeTextures.end()) {
+				m->material = texIter->second;
 			} else {
 				AddNifShapeTexture(nif, shapeList[i]);
 			}					
 		}
 	}
-	InvalidateRect(mGLWindow,NULL,FALSE);
+	Refresh();
 }
 
 void PreviewWindow::AddNifShapeTexture(NifFile* fromNif, const string& shapeName) {
 	int shader;
 	string texFile;
-	fromNif->GetTextureForShape((string)shapeName, texFile, 0);
-	auto sb = fromNif->GetShaderForShape((string)shapeName);
+	fromNif->GetTextureForShape(shapeName, texFile, 0);
+	auto sb = fromNif->GetShaderForShape(shapeName);
 	if (sb && sb->IsSkinShader())
 		shader = 1;
 	else
 		shader = 0;
 
-	SetShapeTexture((string)shapeName, baseDataPath + "textures\\" + texFile, shader);
+	SetShapeTexture(shapeName, baseDataPath + "textures\\" + texFile, shader);
 }
 
+#ifdef _WIN32
 void PreviewWindow::Create(const string& title) {
 	if (!has_registered) 
 		registerClass();
@@ -195,26 +243,26 @@ void PreviewWindow::registerClass() {
 	RegisterClassEx(&wcex);
 	has_registered = true;
 }
+#endif // _WIN32
 
 void PreviewWindow::RightDrag(int dX, int dY) {
 	gls.TurnTableCamera(dX);
 	gls.PitchCamera(dY);
-	InvalidateRect(mGLWindow, NULL, FALSE);
+	Refresh();
 }
 void PreviewWindow::LeftDrag(int dX, int dY) {
 	gls.PanCamera(dX,dY);
-	InvalidateRect(mGLWindow,NULL,FALSE);
+	Refresh();
 }
 
 void PreviewWindow::TrackMouse(int X, int Y) {
 	gls.UpdateCursor(X,Y);
-	InvalidateRect(mGLWindow,NULL,FALSE);
+	Refresh();
 }
-
 
 void PreviewWindow::MouseWheel(int dW) {
 	gls.DollyCamera(dW);
-	InvalidateRect(mGLWindow,NULL,FALSE);
+	Refresh();
 }
 
 void PreviewWindow::Pick(int X, int Y) {
@@ -226,14 +274,28 @@ void PreviewWindow::Pick(int X, int Y) {
 	len = sqrt(camVec.x*camVec.x + camVec.y*camVec.y + camVec.z*camVec.z);
 
 	gls.AddVisRay(camVec,dirVec, len);
-	InvalidateRect(mGLWindow,NULL,FALSE);
+	Refresh();
 }
 
 
 void PreviewWindow::Close() {
+#ifdef _WIN32
 	DestroyWindow(this->mHwnd);
+#else
+	frame->Close();
+#endif
 }
 
+#ifndef _WIN32
+void PreviewWindow::OnClose() {
+	frame = nullptr;
+	canvas = nullptr;
+	// Note: app->ClosePreview() will destroy this PreviewWindow object
+	app->ClosePreview(isSmall ? SMALL_PREVIEW : BIG_PREVIEW);
+}
+#endif
+
+#ifdef _WIN32
 LRESULT CALLBACK GLPreviewWindowWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	PreviewWindow* p = (PreviewWindow*)GetWindowLong(hWnd,GWL_USERDATA);
@@ -322,19 +384,19 @@ LRESULT CALLBACK GLWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
 			break;
 		case WM_KEYUP:
 			switch(wParam) {
-			case 0x4e:
+			case 0x4e: // 'N'
 				p->ToggleSmoothSeams();
 				break;
-			case 0x54:
+			case 0x54: // 'T'
 				p->ToggleTextures();
 				break;
-			case 0x57:
+			case 0x57: // 'W'
 				p->ToggleWireframe();
 				break;
-			case 0x4c:
+			case 0x4c: // 'L'
 				p->ToggleLighting();
 				break;
-			case 0x51:
+			case 0x51: // 'Q'
 				p->ToggleEditMode();
 				break;
 			} 
@@ -348,3 +410,80 @@ LRESULT CALLBACK GLWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
 	}
 	return 0;
 }
+
+#else //!_WIN32
+
+PreviewFrame::PreviewFrame(PreviewWindow* pw, const string& title)
+	: wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition,
+		  wxSize(768, 768)),
+	  previewWindow(pw) {
+}
+
+void PreviewFrame::OnClose(wxCloseEvent& event) {
+	Destroy();
+	previewWindow->OnClose();
+}
+
+BEGIN_EVENT_TABLE(PreviewFrame, wxFrame)
+	EVT_CLOSE(PreviewFrame::OnClose)
+END_EVENT_TABLE();
+
+PreviewCanvas::PreviewCanvas(PreviewWindow* window, wxWindow* wxwin,
+			     const int* attribs)
+	: wxGLCanvas(wxwin, wxID_ANY, attribs),
+	  previewWindow(window) {
+}
+
+void PreviewCanvas::OnPaint(wxPaintEvent& event) {
+	// Initialize OpenGL the first time the window is painted.
+	// We unfortunately can't initialize it before the window is shown.
+	// We could register for the EVT_SHOW event, but unfortunately it
+	// appears to only be called after the first few EVT_PAINT events.
+	// It also isn't supported on all platforms.
+	if (firstPaint) {
+		firstPaint = false;
+		previewWindow->OnShown();
+	}
+
+	previewWindow->Render();
+}
+
+void PreviewCanvas::OnKeyUp(wxKeyEvent& event) {
+	int key = event.GetKeyCode();
+	if (key == 'N') {
+		previewWindow->ToggleSmoothSeams();
+	} else if (key == 'T') {
+		previewWindow->ToggleTextures();
+	} else if (key == 'W') {
+		previewWindow->ToggleWireframe();
+	} else if (key == 'L') {
+		previewWindow->ToggleLighting();
+	} else if (key == 'Q') {
+		previewWindow->ToggleEditMode();
+	}
+}
+
+void PreviewCanvas::OnMotion(wxMouseEvent& event) {
+	if (event.LeftIsDown()) {
+		auto delta = event.GetPosition() - lastMousePosition;
+		previewWindow->LeftDrag(delta.x, delta.y);
+	} else if (event.RightIsDown()) {
+		auto delta = event.GetPosition() - lastMousePosition;
+		previewWindow->RightDrag(delta.x, delta.y);
+	} else {
+		previewWindow->TrackMouse(event.GetX(), event.GetY());
+	}
+	lastMousePosition = event.GetPosition();
+}
+
+void PreviewCanvas::OnMouseWheel(wxMouseEvent& event) {
+	previewWindow->MouseWheel(event.GetWheelRotation());
+}
+
+BEGIN_EVENT_TABLE(PreviewCanvas, wxGLCanvas)
+	EVT_KEY_UP(PreviewCanvas::OnKeyUp)
+	EVT_MOTION(PreviewCanvas::OnMotion)
+	EVT_MOUSEWHEEL(PreviewCanvas::OnMouseWheel)
+	EVT_PAINT(PreviewCanvas::OnPaint)
+END_EVENT_TABLE();
+#endif //!_WIN32

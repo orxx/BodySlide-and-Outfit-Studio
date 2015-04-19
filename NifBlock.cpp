@@ -1,4 +1,5 @@
 #include "NifFile.h"
+#include "Portability.h"
 
 NifBlock::~NifBlock() { 
 }
@@ -2168,7 +2169,7 @@ void NifBlockUnknown::Clone(NifBlockUnknown* other) {
 		memcpy(data, other->data, blockSize);
 }
 
-void NifBlockUnknown::Get(fstream& file, NifBlockHeader& hdr) {
+void NifBlockUnknown::Get(fstream& file, const NifBlockHeader& hdr) {
 	if (!data) return;
 	file.read(data, blockSize);
 }
