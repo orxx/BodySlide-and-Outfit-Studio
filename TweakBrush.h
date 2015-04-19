@@ -52,8 +52,8 @@
 
 */
 #pragma once
-#include "object3d.h"
-#include "mesh.h"
+#include "Object3d.h"
+#include "Mesh.h"
 #include <vector>
 #include <set>
 #include <map>

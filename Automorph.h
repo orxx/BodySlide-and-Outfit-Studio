@@ -1,11 +1,11 @@
 #pragma once
 #include "Object3d.h"
-#include "niffile.h"
-#include "kdmatcher.h"
-#include "mesh.h"
+#include "NifFile.h"
+#include "KDMatcher.h"
+#include "Mesh.h"
 #include "SliderData.h"
 #include "DiffData.h"
-#include "objfile.h"
+#include "ObjFile.h"
 
 #include <vector>
 #include <map>

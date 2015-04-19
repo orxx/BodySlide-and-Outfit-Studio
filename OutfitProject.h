@@ -8,12 +8,14 @@
 #include <string>
 #include <vector>
 #include "Mesh.h"
-#include "shlobj.h"
 #include "OutfitStudio.h"
 #include "ConfigurationManager.h"
 #include "Anim.h"
 
+#ifdef _WIN32
 #pragma warning (disable: 4018)
+#endif
+
 using namespace std;
 
 class OutfitStudio;

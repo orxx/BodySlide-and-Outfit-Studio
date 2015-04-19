@@ -1,15 +1,10 @@
 #include "DiffData.h"
 
+#include "Portability.h"
+
 #include <algorithm>
+#include <iostream>
 #include <unordered_map>
-
-// Set == slider name, target == shape name. 
-bool DiffDataSets::TargetMatch(const string& set, const string& target) {
-	if (dataTargets.find(set) != dataTargets.end())
-		return dataTargets[set] == target;
-
-	return false;
-}
 
 int DiffDataSets::LoadSet(const string& name, const string& target, unordered_map<ushort, vec3>& inDiffData) {
 	if (namedSet.find(name) != namedSet.end())
@@ -22,9 +17,11 @@ int DiffDataSets::LoadSet(const string& name, const string& target, unordered_ma
 }
 
 int DiffDataSets::LoadSet(const string& name, const string& target, const string& fromFile) {
-	fstream inFile(fromFile.c_str(), ios_base::in | ios_base::binary);
-	if (!inFile.is_open())
+	fstream inFile(NativePath(fromFile).c_str(), ios_base::in | ios_base::binary);
+	if (!inFile.is_open()) {
+		std::cerr << "unable to open slider file " << NativePath(fromFile) << endl;
 		return 1;
+	}
 
 	int sz;
 	inFile.read((char*)&sz, 4);
@@ -52,9 +49,11 @@ int DiffDataSets::SaveSet(const string& name, const string& target, const string
 	if (!TargetMatch(name, target))
 		return 1;
 
-	fstream outFile(toFile.c_str(), ios_base::out | ios_base::binary);
-	if (!outFile.is_open())
+	fstream outFile(NativePath(toFile).c_str(), ios_base::out | ios_base::binary);
+	if (!outFile.is_open()) {
+		std::cerr << "unable to save to slider file " << NativePath(toFile) << endl;
 		return 2;
+	}
 
 	int sz = data->size();
 	outFile.write((char*)&sz, sizeof(int));

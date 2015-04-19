@@ -1,8 +1,8 @@
 #pragma once
 
 //#define _HAS_ITERATOR_DEBUGGING 0
-#include <process.h>
 #include <string>
+#include <thread>
 
 using namespace std;
 
@@ -14,7 +14,8 @@ protected:
 	int errorCode;
 
 public:
-	uintptr_t threadHandle;
+	std::thread threadHandle;
+
 	AsyncMonitor() {}
 	virtual ~AsyncMonitor() {}
 

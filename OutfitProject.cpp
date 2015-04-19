@@ -47,11 +47,9 @@ string OutfitProject::Save(const string& strFileName,
 	RefShapes(refShapes);
 	OutfitShapes(outfitShapes);
 
-	char curdir[MAX_PATH];
-	GetCurrentDirectoryA(MAX_PATH, curdir);
-	char folder[MAX_PATH];
-	_snprintf_s(folder, MAX_PATH, MAX_PATH, "%s\\%s\\%s", curdir, "ShapeData", strDataDir.c_str());
-	SHCreateDirectoryExA(NULL, folder, NULL);
+	string curdir = GetCurDir();
+	string folder = NativePath(curdir + "/ShapeData/" + strDataDir);
+	CreateDir(folder.c_str());
 
 	float prog = 5.0f;
 	float step = 10.0f / (outfitShapes.size() + refShapes.size());
@@ -138,12 +136,12 @@ string OutfitProject::Save(const string& strFileName,
 	char ssNewFolder[MAX_PATH];
 	auto it = strFileName.rfind('\\');
 	if (it != string::npos) {
-		_snprintf_s(ssNewFolder, MAX_PATH, MAX_PATH, "%s\\%s", curdir, strFileName.substr(0, it).c_str());
-		SHCreateDirectoryExA(NULL, ssNewFolder, NULL);
+		snprintf(ssNewFolder, MAX_PATH, "%s\\%s", curdir.c_str(), strFileName.substr(0, it).c_str());
+		CreateDir(NativePath(ssNewFolder).c_str());
 	}
 	else {
-		_snprintf_s(ssNewFolder, MAX_PATH, MAX_PATH, "%s\\%s", curdir, "SliderSets");
-		SHCreateDirectoryExA(NULL, ssNewFolder, NULL);
+		snprintf(ssNewFolder, MAX_PATH, "%s\\%s", curdir.c_str(), "SliderSets");
+		CreateDir(NativePath(ssNewFolder).c_str());
 	}
 
 	prog = 61.0f;
@@ -699,7 +697,7 @@ void OutfitProject::SetOutfitTexture(const string& shapeName, const string& text
 
 		string texturesDir = appConfig["GameDataPath"] + "textures\\";
 		string combinedTexFile = texturesDir + nifTexFile;
-		if (GetFileAttributesA(combinedTexFile.c_str()) == INVALID_FILE_ATTRIBUTES)
+		if (!IsRegularFile(combinedTexFile.c_str()))
 			outfitTextures[shapeName] = defaultTexFile;
 		else
 			outfitTextures[shapeName] = combinedTexFile;
@@ -717,7 +715,7 @@ void OutfitProject::SetRefTexture(const string& shapeName, const string& texture
 
 		string texturesDir = appConfig["GameDataPath"] + "textures\\";
 		string combinedTexFile = texturesDir + nifTexFile;
-		if (GetFileAttributesA(combinedTexFile.c_str()) == INVALID_FILE_ATTRIBUTES)
+		if (!IsRegularFile(combinedTexFile.c_str()))
 			baseTextures[shapeName] = defaultTexFile;
 		else
 			baseTextures[shapeName] = combinedTexFile;

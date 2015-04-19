@@ -12,7 +12,7 @@ mesh::mesh() {
 	vertEdges = NULL;
 	bVisible = true;
 	textured = false;
-	MatRef = -1;
+	material = NULL;
 	bBuffersLoaded = false;
 	rendermode = RenderMode::Normal;
 	doublesided = false;
@@ -362,7 +362,7 @@ void mesh::FacetNormals() {
 	}
 }
 
-void mesh::ColorFill(vec3& color) {
+void mesh::ColorFill(const vec3& color) {
 	if (vcolors == NULL) {
 		vcolors = new vec3[nVerts];
 	}

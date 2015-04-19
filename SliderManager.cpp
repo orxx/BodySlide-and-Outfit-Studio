@@ -3,7 +3,9 @@
 #include <algorithm>
 
 
+#ifdef _WIN32
 WNDPROC PrevEditProc=NULL;
+#endif
 
 SliderManager::SliderManager(void)
 {

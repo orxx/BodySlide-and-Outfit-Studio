@@ -1,7 +1,12 @@
 #include "GLShader.h"
 
+#include "Portability.h"
+
+#include <wx/msgdlg.h>
+
 bool GLShader::initComplete = false; 
 
+#ifdef _WIN32
 PFNGLCREATESHADERPROC glCreateShader = NULL;
 PFNGLSHADERSOURCEPROC glShaderSource = NULL;
 PFNGLCOMPILESHADERPROC glCompileShader = NULL;
@@ -19,6 +24,7 @@ PFNGLGETSHADERIVPROC glGetShaderiv = NULL;
 PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog = NULL;
 PFNGLGETPROGRAMIVPROC glGetProgramiv = NULL;
 PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog = NULL;
+#endif
 
 void GLShader::generatePassThruVert() {
 	string s = 
@@ -30,7 +36,7 @@ void GLShader::generatePassThruVert() {
 }";
 	vertSrcLength = s.length();
 	vertSrc = new char[vertSrcLength+1];
-	_snprintf(vertSrc, vertSrcLength,"%s", s.c_str());
+	snprintf(vertSrc, vertSrcLength, "%s", s.c_str());
 }
 
 void GLShader::generateDefaultVert() {
@@ -167,7 +173,7 @@ void main (void)\
 }";
 	vertSrcLength = s.length();
 	vertSrc = new char[vertSrcLength+1];
-	_snprintf(vertSrc,vertSrcLength, "%s", s.c_str());
+	snprintf(vertSrc, vertSrcLength, "%s", s.c_str());
 }
 
 void GLShader::generatePassThruFrag() {
@@ -178,7 +184,7 @@ gl_FragColor = gl_Color;\
 }";
 	fragSrcLength = s.length();
 	fragSrc = new char[fragSrcLength+1];
-	_snprintf(fragSrc, fragSrcLength, "%s", s.c_str());
+	snprintf(fragSrc, fragSrcLength, "%s", s.c_str());
 }
 
 void GLShader::generateDefaultFrag() {
@@ -196,7 +202,7 @@ void main (void)\
 }";
 	fragSrcLength = s.length();
 	fragSrc = new char[fragSrcLength+1];
-	_snprintf(fragSrc, fragSrcLength, "%s", s.c_str());
+	snprintf(fragSrc, fragSrcLength, "%s", s.c_str());
 }
 
 GLShader::~GLShader(void) {
@@ -218,10 +224,10 @@ GLShader::GLShader(void) {
 	vertSrc = NULL;
 
 	if (!initShaders())
-		MessageBoxA(NULL, errorstring.c_str(), "Shader Error", MB_TOPMOST | MB_OK);
+		wxMessageBox(errorstring, "Shader Error");
 	else
 		if (!LoadShaders(GLSHADER_PASSTHROUGH, GLSHADER_PASSTHROUGH, false))
-			MessageBoxA(NULL, errorstring.c_str(), "Shader Error", MB_TOPMOST | MB_OK);
+			wxMessageBox(errorstring, "Shader Error");
 }
 
 GLShader::GLShader(const char *vertexSource, const char *fragmentSource, bool build) {
@@ -232,13 +238,14 @@ GLShader::GLShader(const char *vertexSource, const char *fragmentSource, bool bu
 	vertSrc = NULL;
 
 	if (!initShaders())
-		MessageBoxA(NULL, errorstring.c_str(), "Shader Error", MB_TOPMOST | MB_OK);
+		wxMessageBox(errorstring, "Shader Error");
 	else
 		if (!LoadShaders(vertexSource, fragmentSource, build))
-			MessageBoxA(NULL, errorstring.c_str(), "Shader Error", MB_TOPMOST | MB_OK);
+			wxMessageBox(errorstring, "Shader Error");
 }
 
 bool GLShader::initShaders() {
+#ifdef _WIN32
 	if (!initComplete) {
 		glCreateShader = (PFNGLCREATESHADERPROC)wglGetProcAddress("glCreateShader");
 		glShaderSource = (PFNGLSHADERSOURCEPROC)wglGetProcAddress("glShaderSource");
@@ -273,13 +280,17 @@ bool GLShader::initShaders() {
 
 		initComplete = true;
 	}
+#endif
 	return true;
 }
 
 bool GLShader::loadShaderFile(const char* fname, char** buffer, int* outLength) {
-	ifstream infile(fname, ios_base::in | ios_base::binary);
+	auto path = NativePath(fname);
+	std::cout << "loading shader file " << path << endl;
+	ifstream infile(path, ios_base::in | ios_base::binary);
 	(*outLength) = 0;
 	if (!infile.good()) {
+		std::cerr << "unable to open shader file " << path;
 		return false;
 	}
 

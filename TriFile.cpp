@@ -1,20 +1,24 @@
 #include "TriFile.h"
 
+#include "Portability.h"
+
 int TriFile::Read(string fileName) {
-	ifstream triFile(fileName.c_str(), ios_base::binary);
+	ifstream triFile(NativePath(fileName).c_str(), ios_base::binary);
 
 	if (triFile.is_open()) {
 		bool packed = false;
 		int packedBytes = 4;
 
-		uint hdr = 0;
-		triFile.read((char*)&hdr, 4);
-		if (hdr != 'TRI\0' && hdr != 'TRIP')
+		char hdr[4] = {0, 0, 0, 1};
+		triFile.read(hdr, 4);
+		if (memcmp(hdr, "TRI", 3) != 0)
 			return false;
-		if (hdr == 'TRIP') {
+		if (hdr[3] == 'P') {
 			packed = true;
 			packedBytes = 2;
 		}
+		else if (hdr[3] != '\0')
+			return false;
 
 		uint shapeCount = 0;
 		triFile.read((char*)&shapeCount, packedBytes);
@@ -89,17 +93,17 @@ int TriFile::Read(string fileName) {
 }
 
 int TriFile::Write(string fileName, bool packed) {
-	ofstream triFile(fileName.c_str(), ios_base::binary);
+	ofstream triFile(NativePath(fileName).c_str(), ios_base::binary);
 
 	if (triFile.is_open()) {
 		int packedBytes = 2;
-		uint hdr = 'TRIP';
+		char hdr[4] = { 'T', 'R', 'I', 'P' };
 
 		if (!packed) {
-			hdr = 'TRI\0';
+			hdr[3] = '\0';
 			packedBytes = 4;
 		}
-		triFile.write((char*)&hdr, 4);
+		triFile.write(hdr, 4);
 
 		uint shapeCount = shapeMorphs.size();
 		triFile.write((char*)&shapeCount, packedBytes);

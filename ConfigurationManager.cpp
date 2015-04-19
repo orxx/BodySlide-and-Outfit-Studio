@@ -134,7 +134,7 @@ int ConfigurationItem::EnumerateChildrenProperty(const string& inName, const str
 
 ConfigurationItem* ConfigurationItem::FindChild(const string& inName, bool recurse) {
 	ConfigurationItem* found = NULL;
-	unsigned int pos = inName.find_first_of("/.");
+	size_t pos = inName.find_first_of("/.");
 
 	if (pos != string::npos) {
 		string tmpName = inName.substr(0, pos);
@@ -413,13 +413,13 @@ void ConfigurationManager::SetValue(const string& inName, const string& newValue
 
 void ConfigurationManager::SetValue(const string& inName, int newValue, bool flagDefault) {
 	char intStr[24];
-	_snprintf_s(intStr, 24, 24, "%d", newValue);
+	snprintf(intStr, 24, "%d", newValue);
 	SetValue(inName, string(intStr), flagDefault);
 }
 
 void ConfigurationManager::SetValue(const string& inName, float newValue, bool flagDefault) {
 	char intStr[24];
-	_snprintf_s(intStr, 24, 24, "%0.5f", newValue);
+	snprintf(intStr, 24, "%0.5f", newValue);
 	SetValue(inName, string(intStr), flagDefault);
 }
 

@@ -1,15 +1,14 @@
 #include "GLSurface.h"
+
+#include "Portability.h"
 #include "math.h"
 #include <algorithm>
+#include <iostream>
 #include <set>
 #include <limits>
-#ifdef _DEBUG
-#pragma comment (lib, "SOIL_d.lib")
-#else
-#pragma comment (lib, "SOIL.lib")
-#endif
-#include "SOIL.h"
+#include <wx/msgdlg.h>
 
+#ifdef _WIN32
 PFNGLGENBUFFERSPROC glGenBuffers = NULL;
 PFNGLBINDBUFFERPROC glBindBuffer = NULL;
 PFNGLBUFFERDATAPROC glBufferData = NULL;
@@ -21,30 +20,17 @@ PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
 PFNGLBUFFERSUBDATAPROC glBufferSubData;
 PFNWGLGETEXTENSIONSSTRINGARBPROC wglGetExtensionsStringArb;
 PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatArb;
+#endif
 
 
 short GLSurface::multisampleState = 0;
 int GLSurface::pixelFormatMS = 0;
 
 
-vec3::vec3(vtx& other) {
+vec3::vec3(vtx other) {
 	x = other.x;
 	y = other.y;
 	z = other.z;
-}
-
-vec3& vec3::operator =(const vtx& other) {
-	x = other.x;
-	y = other.y;
-	z = other.z;
-	return (*this);
-}
-
-vec3& vec3::operator += (const vtx& other) {
-	x += other.x;
-	y += other.y;
-	z += other.z;
-	return (*this);
 }
 
 tri::tri() {
@@ -219,12 +205,16 @@ bool tri::IntersectSphere(vtx *vertref, vec3 &origin, float radius) {
 }
 
 GLSurface::GLSurface() {
+#ifdef _WIN32
 	hOwner = NULL;
 	hDC = NULL;
 	hRC = NULL;
+#endif
 	mFov = 90.0f;
 	bEditMode = false;
 	bTextured = true;
+	bWireframe = false;
+	bLighting = true;
 	bMaskVisible = false;
 	bWeightColors = false;
 	cursorSize = 0.5f;
@@ -259,6 +249,7 @@ bool GLSurface::IsExtensionSupported(char* szTargetExtension) {
 	return false;
 }
 
+#ifdef _WIN32
 bool GLSurface::IsWGLExtensionSupported(char* szTargetExtension, HDC refDC) {
 	const char *pszExtensions = NULL;
 	const char *pszStart;
@@ -364,6 +355,7 @@ bool GLSurface::QueryMultisample(HWND queryWnd) {
 	multisampleState = 2;
 	return false;
 }
+#endif // _WIN32
 
 void GLSurface::initLighting() {
 	glEnable(GL_LIGHTING);
@@ -409,6 +401,7 @@ void GLSurface::initMaterial(vec3 diffusecolor) {
 	glMaterialfv(GL_FRONT, GL_SHININESS, shiny);
 }
 
+#ifdef _WIN32
 int GLSurface::Initialize(HWND parentWnd, bool bUseDefaultShaders) {
 	PIXELFORMATDESCRIPTOR pfd;
 
@@ -443,6 +436,7 @@ int GLSurface::Initialize(HWND parentWnd, bool bUseDefaultShaders) {
 
 	bUseVBO = IsExtensionSupported("GL_ARB_vertex_buffer_object");
 	if (bUseVBO) {
+#ifdef _WIN32
 		glGenBuffers = (PFNGLGENBUFFERSPROC)wglGetProcAddress("glGenBuffers");
 		glBindBuffer = (PFNGLBINDBUFFERPROC)wglGetProcAddress("glBindBuffer");
 		glBufferData = (PFNGLBUFFERDATAPROC)wglGetProcAddress("glBufferData");
@@ -459,6 +453,7 @@ int GLSurface::Initialize(HWND parentWnd, bool bUseDefaultShaders) {
 		glDeleteBuffersARB = (PFNGLDELETEBUFFERSARBPROC) wglGetProcAddress("glDeleteBuffersARB");
 		glGetBufferParameterivARB = (PFNGLGETBUFFERPARAMETERIVARBPROC) wglGetProcAddress("glGetBufferParameterivARB");
 		*/
+#endif // _WIN32
 	}
 	else {
 		MessageBoxA(NULL, "OpenGL: GL_ARB_vertex_buffer_object (VBO) not supported on this machine.", "Error", MB_TOPMOST | MB_OK);
@@ -468,9 +463,32 @@ int GLSurface::Initialize(HWND parentWnd, bool bUseDefaultShaders) {
 	glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC)wglGetProcAddress("glVertexAttribPointer");
 	glDisableVertexAttribArray = (PFNGLDISABLEVERTEXATTRIBARRAYPROC)wglGetProcAddress("glDisableVertexAttribArray");
 
-	bWireframe = false;
-	bLighting = true;
-	glShadeModel(GL_SMOOTH);
+	return CommonInit(bUseDefaultShaders);
+}
+#else // !_WIN32
+int GLSurface::Initialize(wxGLCanvas* can, wxGLContext* ctx, bool bUseDefaultShaders) {
+	canvas = can;
+	context = ctx;
+
+	canvas->SetCurrent(*context);
+
+	auto err = glewInit();
+	if (err != GLEW_OK) {
+		std::cerr << "Error initializing GLEW: " << glewGetErrorString(err) << endl;
+		return 1;
+	}
+
+	if (!GL_ARB_vertex_buffer_object) {
+		wxMessageBox("OpenGL: GL_ARB_vertex_buffer_object (VBO) not "
+			     "supported on this machine.", "Error");
+	}
+
+	return CommonInit(true);
+}
+#endif // !_WIN32
+
+int GLSurface::CommonInit(bool bUseDefaultShaders) {
+	glShadeModel(GL_SMOOTH); 
 
 	glClearDepth(1.0f);
 	glEnable(GL_DEPTH_TEST);
@@ -516,10 +534,9 @@ void GLSurface::Cleanup() {
 		}
 		delete overlays[i];
 	}
-	for (int i = 0; i < materials.size(); i++) {
-		delete materials[i];
-	}
+	resLoader.Cleanup();
 
+#ifdef _WIN32
 	if (hRC) {
 		wglMakeCurrent(NULL, NULL);
 		wglDeleteContext(hRC);
@@ -530,10 +547,15 @@ void GLSurface::Cleanup() {
 	hRC = NULL;
 	hDC = NULL;
 	hOwner = NULL;
+#endif
 }
 
 void GLSurface::Begin() {
+#ifdef _WIN32
 	wglMakeCurrent(hDC, hRC);
+#else
+	canvas->SetCurrent(*context);
+#endif
 }
 
 void GLSurface::SetStartingView(vec3 camPos, unsigned int vpWidth, unsigned int vpHeight, float fov) {
@@ -710,7 +732,7 @@ int GLSurface::CollideOverlay(int ScreenX, int ScreenY, vec3& outOrigin, vec3& o
 	return collided;
 }
 
-bool GLSurface::CollidePlane(int ScreenX, int ScreenY, vec3& outOrigin, vec3& inPlaneNormal, float inPlaneDist) {
+bool GLSurface::CollidePlane(int ScreenX, int ScreenY, vec3& outOrigin, const vec3& inPlaneNormal, float inPlaneDist) {
 	vec3 o;
 	vec3 d;
 	GetPickRay(ScreenX, ScreenY, d, o);
@@ -917,7 +939,11 @@ int GLSurface::RenderOneFrame() {
 		RenderMesh(m);
 	}
 
+#ifdef _WIN32
 	SwapBuffers(hDC);
+#else
+	canvas->SwapBuffers();
+#endif
 	return 0;
 }
 
@@ -937,27 +963,31 @@ void GLSurface::RenderMesh(mesh* m) {
 		glEnable(GL_LIGHTING);
 
 	if (m->rendermode == RenderMode::Normal || m->rendermode == RenderMode::LitWire) {
-		if (m->MatRef >= 0)
-			materials[m->MatRef]->shader->Begin();
+		GLMaterial* mat = m->material;
+		if (mat) {
+			mat->shader->Begin();
+		}
 
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glVertexPointer(3, GL_FLOAT, sizeof(vtx), &m->verts[0].x);
 		glEnableClientState(GL_NORMAL_ARRAY);
 		glNormalPointer(GL_FLOAT, sizeof(vtx), &m->verts[0].nx);
 
-		if (m->vcolors && bMaskVisible) {
-			glEnableVertexAttribArray(materials[m->MatRef]->shader->GetMaskAttribute());
-			glVertexAttribPointer(materials[m->MatRef]->shader->GetMaskAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), m->vcolors);
-		}
-		else
-			glDisableVertexAttribArray(materials[m->MatRef]->shader->GetMaskAttribute());
+		if (mat) {
+			if (m->vcolors && bMaskVisible) {
+				glEnableVertexAttribArray(mat->shader->GetMaskAttribute());
+				glVertexAttribPointer(mat->shader->GetMaskAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), m->vcolors);
+			}
+			else
+				glDisableVertexAttribArray(mat->shader->GetMaskAttribute());
 
-		if (m->vcolors && bWeightColors) {
-			glEnableVertexAttribArray(materials[m->MatRef]->shader->GetWeightAttribute());
-			glVertexAttribPointer(materials[m->MatRef]->shader->GetWeightAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), &m->vcolors[0].y);
+			if (m->vcolors && bWeightColors) {
+				glEnableVertexAttribArray(mat->shader->GetWeightAttribute());
+					glVertexAttribPointer(mat->shader->GetWeightAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), &m->vcolors[0].y);
+			}
+			else
+				glDisableVertexAttribArray(mat->shader->GetWeightAttribute());
 		}
-		else
-			glDisableVertexAttribArray(materials[m->MatRef]->shader->GetWeightAttribute());
 
 		if (!m->vcolors)
 			initMaterial(m->color);
@@ -967,14 +997,18 @@ void GLSurface::RenderMesh(mesh* m) {
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-			if (bUseAF)
-				materials[m->MatRef]->ActivateTextures(m->texcoord, largestAF);
-			else
-				materials[m->MatRef]->ActivateTextures(m->texcoord);
+			if (mat) {
+				if (bUseAF)
+					mat->ActivateTextures(m->texcoord, largestAF);
+				else
+					mat->ActivateTextures(m->texcoord);
+			}
 		}
 		else {
 			glDisable(GL_BLEND);
-			materials[m->MatRef]->DeactivateTextures();
+			if (mat) {
+				mat->DeactivateTextures();
+			}
 		}
 		elemPtr = &m->tris[0].p1;
 
@@ -984,8 +1018,8 @@ void GLSurface::RenderMesh(mesh* m) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		}
 		glDrawElements(GL_TRIANGLES, (m->nTris * 3), GL_UNSIGNED_SHORT, elemPtr);
-		if (m->MatRef >= 0)
-			materials[m->MatRef]->shader->End();
+		if (mat)
+			mat->shader->End();
 
 		if (bWireframe) {
 			glDisable(GL_LIGHTING);
@@ -1097,7 +1131,8 @@ void GLSurface::AddMeshExplicit(vector<vector3>* verts, vector<triangle>* tris, 
 			m->texcoord[i].v = (*uvs)[i].v;
 		}
 		m->textured = true;
-		m->MatRef = 1;
+		// What was this code trying to set the material to?
+		//m->MatRef = 1;
 	}
 
 	// Load tris. Also sum face normals here.
@@ -1217,10 +1252,16 @@ void GLSurface::AddMeshFromNif(NifFile* nif, string shapeName, vec3* color, bool
 			m->texcoord[i].v = (*nifUvs)[i].v;
 		}
 		m->textured = true;
+		// TODO: What was this code trying to set the material to?
+                // (It looks like some old commented out code may have usually
+                // loaded femalebody_1.dds as material 1, but this isn't the
+                // case any more.)
+#if 0
 		if (isSkin && materials.size() > 1)
 			m->MatRef = 1;
 		else
 			m->MatRef = 0;
+#endif
 	}
 
 	if (!nifNorms) {
@@ -1611,7 +1652,8 @@ int  GLSurface::AddVisTri(vec3& p1, vec3& p2, vec3& p3, const string& name) {
 	return meshes.size() - 1;
 }
 
-int  GLSurface::AddVisCircle(vec3& center, vec3& normal, float radius, const string& name) {
+int  GLSurface::AddVisCircle(const vec3& center, const vec3& normal,
+			     float radius, const string& name) {
 	Mat4 rotMat;
 	int ringMesh = GetOverlayID(name);
 	if (ringMesh >= 0) {
@@ -1661,7 +1703,9 @@ int  GLSurface::AddVisCircle(vec3& center, vec3& normal, float radius, const str
 	return ringMesh;
 }
 
-int GLSurface::AddVis3dRing(vec3& center, vec3& normal, float holeRadius, float ringRadius, vec3& color, const string& name) {
+int GLSurface::AddVis3dRing(const vec3& center, const vec3& normal,
+			    float holeRadius, float ringRadius,
+			    const vec3& color, const string& name) {
 	int myMesh = GetOverlayID(name);
 	if (myMesh >= 0) {
 		delete overlays[myMesh];
@@ -1762,7 +1806,9 @@ int GLSurface::AddVis3dRing(vec3& center, vec3& normal, float holeRadius, float 
 }
 
 
-int GLSurface::AddVis3dArrow(vec3& origin, vec3& direction, float stemRadius, float pointRadius, float length, vec3& color, const string& name) {
+int GLSurface::AddVis3dArrow(const vec3& origin, const vec3& direction,
+			     float stemRadius, float pointRadius, float length,
+			     const vec3& color, const string& name) {
 	Mat4 rotMat;
 
 	int myMesh = GetOverlayID(name);
@@ -1944,20 +1990,8 @@ RenderMode GLSurface::SetMeshRenderMode(const string& name, RenderMode mode) {
 	return r;
 }
 
-int GLSurface::AddMaterial(const string& textureFile, const string& vShaderFile, const string& fShaderFile) {
-	string errstr;
-	string matName = textureFile + fShaderFile;
-	if (texMats.find(matName) != texMats.end()) {
-		return texMats[matName];
-	}
-	unsigned int texid1 = SOIL_load_OGL_texture(textureFile.c_str(), SOIL_LOAD_AUTO, 0, SOIL_FLAG_TEXTURE_REPEATS);
-	if (!texid1) {
-		errstr = SOIL_last_result();
-		return 0;
-	}
-	texMats[matName] = materials.size();
-	materials.push_back(new GLMaterial(texid1, vShaderFile.c_str(), fShaderFile.c_str()));
-	return materials.size() - 1;
+GLMaterial* GLSurface::AddMaterial(const string& textureFile, const string& vShaderFile, const string& fShaderFile) {
+	return resLoader.AddMaterial(textureFile, vShaderFile, fShaderFile);
 }
 
 void GLSurface::BeginEditMode() {

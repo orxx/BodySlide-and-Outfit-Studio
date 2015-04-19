@@ -1,6 +1,6 @@
 #pragma once
-#include "object3d.h"
-#include "kdmatcher.h"
+#include "Object3d.h"
+#include "KDMatcher.h"
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
@@ -13,6 +13,8 @@ enum RenderMode {
 	UnlitPoints,
 	LitWire
 };
+
+class GLMaterial;
 
 class mesh {
 public:
@@ -36,7 +38,7 @@ public:
 	bool doublesided;
 	bool textured;
 	vec2* texcoord;
-	int MatRef;			// integer index to a material array.
+	GLMaterial* material;
 
 	vec3* vcolors;		// vertex colors 
 
@@ -104,7 +106,7 @@ public:
 	int GetAdjacentUnvisitedPoints(int querypoint, int outPoints[], int maxPoints, bool* visPoint);
 
 	// creates (if necessary) the vertex color array and sets all the colors to the provided value
-	void ColorFill(vec3& color);
+	void ColorFill(const vec3& color);
 	
 	void ColorChannelFill(int channel, float value);
 
