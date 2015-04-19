@@ -37,8 +37,8 @@ class GLSurface
 	HGLRC hRC;
 	HDC hDC;
 #else
-        wxGLCanvas* canvas{nullptr};
-        wxGLContext* context{nullptr};
+	wxGLCanvas* canvas{nullptr};
+	wxGLContext* context{nullptr};
 #endif
 
 	float mFov;

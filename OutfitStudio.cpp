@@ -1582,19 +1582,15 @@ void OutfitStudio::OnOutfitVisToggle(wxTreeEvent& event) {
 	int state = outfitShapes->GetItemState(event.GetItem());
 	s = outfitShapes->GetItemText(event.GetItem()).ToAscii().data();
 
-#ifdef _WIN32
-	if ((GetKeyState(VK_MENU) & 0x8000) > 0) {
+	if (wxGetKeyState(WXK_ALT)) {
 		notSelf = true;
 		state = groupstate;
 	}
 
-	if ((GetKeyState(VK_CONTROL) & 0x8000) > 0) {
+	if (wxGetKeyState(WXK_CONTROL)) {
 		if (state == 2) state = 0;
 		if (state == 1) state = 2;
 	}
-#else
-        // FIXME
-#endif
 
 
 	if (state == 0) {
@@ -3475,9 +3471,8 @@ bool wxGLPanel::StartBrushStroke(const wxPoint& screenPos) {
 	//tweakBrush.setMirror(true);
 	savedBrush = activeBrush;
 
-#ifdef _WIN32
-	if ((GetKeyState(VK_CONTROL) & 0x8000) > 0) {
-		if ((GetKeyState(VK_MENU) & 0x8000) > 0) {
+	if (wxGetKeyState(WXK_CONTROL)) {
+		if (wxGetKeyState(WXK_ALT)) {
 			UnMaskBrush.setStrength(-maskBrush.getStrength());
 			activeBrush = &UnMaskBrush;
 		}
@@ -3486,12 +3481,12 @@ bool wxGLPanel::StartBrushStroke(const wxPoint& screenPos) {
 		}
 	}
 	else if (activeBrush == &weightBrush) {
-		if ((GetKeyState(VK_MENU) & 0x8000) > 0) {
+		if (wxGetKeyState(WXK_ALT)) {
 			unweightBrush.refBone = os->GetActiveBone();
 			unweightBrush.setStrength(-weightBrush.getStrength());
 			activeBrush = &unweightBrush;
 		}
-		else if ((GetKeyState(VK_SHIFT) & 0x8000) > 0) {
+		else if (wxGetKeyState(WXK_SHIFT)) {
 			smoothWeightBrush.refBone = os->GetActiveBone();
 			smoothWeightBrush.setStrength(weightBrush.getStrength() * 15.0f);
 			activeBrush = &smoothWeightBrush;
@@ -3500,7 +3495,7 @@ bool wxGLPanel::StartBrushStroke(const wxPoint& screenPos) {
 			weightBrush.refBone = os->GetActiveBone();
 		}
 	}
-	else if ((GetKeyState(VK_MENU) & 0x8000) > 0) {
+	else if (wxGetKeyState(WXK_ALT)) {
 		if (activeBrush == &standardBrush) {
 			activeBrush = &deflateBrush;
 		}
@@ -3512,13 +3507,9 @@ bool wxGLPanel::StartBrushStroke(const wxPoint& screenPos) {
 			activeBrush = &UnMaskBrush;
 		}
 	}
-	else if (activeBrush != &weightBrush && ((GetKeyState(VK_SHIFT) & 0x8000) > 0)) {
+	else if (activeBrush != &weightBrush && wxGetKeyState(WXK_SHIFT)) {
 		activeBrush = &smoothBrush;
 	}
-
-#else
-        // FIXME: input handling
-#endif
 
 	if (activeBrush->Type() == TBT_WEIGHT && os->IsDirty())
 		if (os->PromptUpdateBase() == wxCANCEL)
@@ -3853,8 +3844,7 @@ void wxGLPanel::OnSize(wxSizeEvent& event) {
 }
 
 void wxGLPanel::OnMouseWheel(wxMouseEvent& event) {
-#ifdef _WIN32
-	if ((GetKeyState('S') & 0x8000) > 0)  {
+	if (wxGetKeyState(static_cast<wxKeyCode>('S'))) {
 		wxPoint p = event.GetPosition();
 		int delt = event.GetWheelRotation();
 		if (delt < 0)
@@ -3867,11 +3857,6 @@ void wxGLPanel::OnMouseWheel(wxMouseEvent& event) {
 		int delt = event.GetWheelRotation();
 		gls.DollyCamera(delt);
 	}
-#else
-	// FIXME
-	int delt = event.GetWheelRotation();
-	gls.DollyCamera(delt);
-#endif
 	Refresh();
 }
 
@@ -3896,19 +3881,13 @@ void wxGLPanel::OnMouseMove(wxMouseEvent& event) {
 
 	if (rbuttonDown) {
 		isRDragging = true;
-#ifdef _WIN32
-		if ((GetKeyState(VK_SHIFT) & 0x8000) > 0) {
+		if (wxGetKeyState(WXK_SHIFT) > 0) {
 			gls.PanCamera(x - lastX, y - lastY);
 		}
 		else {
 			gls.TurnTableCamera(x - lastX);
 			gls.PitchCamera(y - lastY);
 		}
-#else
-		// FIXME
-		gls.TurnTableCamera(x - lastX);
-		gls.PitchCamera(y - lastY);
-#endif
 		Refresh();
 	}
 	if (lbuttonDown) {

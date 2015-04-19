@@ -1422,6 +1422,7 @@ BodySlideFrame::BodySlideFrame(BodySlideApp* app, const wxString &title, const w
 	SetSize(size);
 	sw->SetScrollRate(5, 26);
 	sw->SetFocusIgnoringChildren();
+	sw->SetBackgroundColour(wxColor(0x40, 0x40, 0x40));
 	sw->Bind(wxEVT_ENTER_WINDOW, &BodySlideFrame::OnEnterSliderWindow, this);
 
 	wxString val = Config.GetCString("LastGroupFilter", "");
@@ -1504,10 +1505,8 @@ void BodySlideFrame::AddSliderGUI(const wxString& name, bool isZap, bool oneSize
 
 	if (!oneSize) {
 		sd->lblSliderLo = new wxStaticText(sw, wxID_ANY, name, wxDefaultPosition, wxSize(-1, 22), wxALIGN_CENTER_HORIZONTAL);
-#ifdef _WIN32
 		sd->lblSliderLo->SetBackgroundColour(wxColor(0x40, 0x40, 0x40));
 		sd->lblSliderLo->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_SCROLLBAR));
-#endif
 		sliderLayout->Add(sd->lblSliderLo, 0, wxALIGN_CENTER_HORIZONTAL | wxLEFT, 5);
 
 		if (isZap) {
@@ -1532,10 +1531,8 @@ void BodySlideFrame::AddSliderGUI(const wxString& name, bool isZap, bool oneSize
 	}
 
 	sd->lblSliderHi = new wxStaticText(sw, wxID_ANY, name, wxDefaultPosition, wxSize(-1, 22), wxALIGN_CENTER_HORIZONTAL);
-#ifdef _WIN32
 	sd->lblSliderHi->SetBackgroundColour(wxColor(0x40, 0x40, 0x40));
 	sd->lblSliderHi->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_SCROLLBAR));
-#endif
 	sliderLayout->Add(sd->lblSliderHi, 0, wxALIGN_CENTER_HORIZONTAL | wxLEFT, 5);
 
 	if (isZap) {
@@ -1975,17 +1972,12 @@ void BodySlideFrame::OnBuildBodies(wxCommandEvent& WXUNUSED(event)) {
 	if (cbRaceMenu)
 		tri = cbRaceMenu->IsChecked();
 
-#ifdef _WIN32
-	if (GetKeyState(VK_CONTROL) & 0x8000)
+	if (wxGetKeyState(WXK_CONTROL))
 		app->BuildBodies(true, false, tri);
-	else if (GetKeyState(VK_MENU) & 0x8000)
+	else if (wxGetKeyState(WXK_ALT))
 		app->BuildBodies(false, true, tri);
 	else
 		app->BuildBodies(false, false, tri);
-#else
-	// FIXME: use wxKeyboardState
-	app->BuildBodies(false, false, tri);
-#endif
 }
 
 void BodySlideFrame::OnBatchBuild(wxCommandEvent& WXUNUSED(event)) {
@@ -2001,14 +1993,10 @@ void BodySlideFrame::OnBatchBuild(wxCommandEvent& WXUNUSED(event)) {
 	if (cbRaceMenu)
 		tri = cbRaceMenu->IsChecked();
 
-#if _WIN32
-	if (GetKeyState(VK_CONTROL) & 0x8000)
+	if (wxGetKeyState(WXK_CONTROL))
 		custpath = true;
-	else if (GetKeyState(VK_MENU) & 0x8000) // Alt
+	else if (wxGetKeyState(WXK_ALT))
 		clean = true;
-#else
-	// FIXME: Use wxKeyboardState
-#endif
 
 	app->GetFilteredOutfits(outfitChoices);
 
