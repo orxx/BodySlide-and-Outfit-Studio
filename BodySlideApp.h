@@ -102,24 +102,8 @@ public:
 			return;
 		}
 
-		string stupidkeys = "0123456789-";
-		bool stupidHack = false;
-		if (event.GetKeyCode() < 256 && stupidkeys.find(event.GetKeyCode()) != string::npos)
-			stupidHack = true;
-
-		if (stupidHack && nm.EndsWith("|readout")) {
-#ifdef _WIN32
-			wxTextCtrl* e = (wxTextCtrl*)w;
-			HWND hwndEdit = e->GetHandle();
-			::SendMessage(hwndEdit, WM_CHAR, event.GetKeyCode(), event.GetRawKeyFlags());
-#else
-			// Do we need to do anything here?
-			// It doesn't really look like the code above is used
-			// anymore, as far as I can tell.
-#endif
-		} else {
-			event.Skip();
-		}
+		// Let the event propagate through and be handled normally
+		event.Skip();
 	}
 	/*
 	int FilterEvent(wxEvent& event) {
