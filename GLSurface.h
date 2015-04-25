@@ -14,13 +14,16 @@
 #include <string>
 #include <vector>
 #include <hash_map>
+#include <wx/glcanvas.h>
 
 using namespace std;
 
 class GLSurface {
-	HWND hOwner;
-	HGLRC hRC;
-	HDC hDC;
+	HWND hOwner{nullptr};
+	HGLRC hRC{nullptr};
+	HDC hDC{nullptr};
+	wxGLCanvas* canvas{nullptr};
+	wxGLContext* context{nullptr};
 
 	float mFov;
 	vec3 camPos;
@@ -33,6 +36,7 @@ class GLSurface {
 
 	bool bUseVBO;
 	static short multisampleState;
+	static int numMultiSamples;
 	static int pixelFormatMS;
 
 	bool bWireframe;
@@ -60,6 +64,8 @@ class GLSurface {
 
 	void initLighting();
 	void initMaterial(vec3 diffusecolor);
+	void InitGLExtensions();
+	int InitGLSettings(bool bUseDefaultShaders);
 
 	void DeleteMesh(int meshID) {
 		if (meshID < meshes.size()) {
@@ -77,6 +83,9 @@ public:
 	bool bEditMode;
 	GLSurface(void);
 	~GLSurface(void);
+
+	// Get the attributes to use for creating a wxGLCanvas
+	static const int* GetGLAttribs(wxWindow* parent);
 
 	void DeleteAllMeshes() {
 		for (auto m : meshes) {
@@ -196,12 +205,13 @@ public:
 		cursorSize = newsize;
 	}
 
-	bool IsWGLExtensionSupported(char* szTargetExtension, HDC refDC);
-	bool IsExtensionSupported(char* szTargetExtension);
-	bool MultiSampleQueried() {
+	static bool IsWGLExtensionSupported(char* szTargetExtension, HDC refDC);
+	static bool IsExtensionSupported(char* szTargetExtension);
+	static bool MultiSampleQueried() {
 		return (multisampleState > 0);
 	}
-	bool QueryMultisample(HWND queryWnd);		// must be a throwaway window, do not use the same hwnd as final context.
+	static bool QueryMultisample(HWND queryWnd);		// must be a throwaway window, do not use the same hwnd as final context.
+	int Initialize(wxGLCanvas* canvas, wxGLContext* context, bool bUseDefaultShaders = true);
 	int Initialize(HWND parentWnd, bool bUseDefaultShaders = true);
 	void Begin();
 	void Cleanup();

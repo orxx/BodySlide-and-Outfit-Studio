@@ -5,6 +5,7 @@ ConfigurationManager Config;
 
 BEGIN_EVENT_TABLE(BodySlideFrame, wxFrame)
 	EVT_MENU(wxID_EXIT, BodySlideFrame::OnExit)
+	EVT_CLOSE(BodySlideFrame::OnClose)
 	EVT_ACTIVATE(BodySlideFrame::OnActivateFrame)
 	EVT_ICONIZE(BodySlideFrame::OnIconizeFrame)
 	EVT_COMMAND_SCROLL(wxID_ANY, BodySlideFrame::OnSliderChange)
@@ -445,6 +446,14 @@ void BodySlideApp::ShowPreview(char PreviewType) {
 	if (*winPtr != NULL)
 		return;
 
+	*winPtr = new PreviewWindow(this, PreviewType);
+}
+
+void BodySlideApp::InitPreview(char PreviewType) {
+	PreviewWindow* win = (PreviewType == SMALL_PREVIEW) ? preview0 : preview1;
+	if (!win)
+		return;
+
 	string inputFileName;
 	bool freshLoad = false;
 	inputFileName = activeSet.GetInputFileName();
@@ -516,14 +525,14 @@ void BodySlideApp::ShowPreview(char PreviewType) {
 	}
 
 	string baseGamePath = Config["GameDataPath"];
-	*winPtr = new PreviewWindow((HWND)sliderView->GetHWND(), &PreviewMod, PreviewType);
-	(*winPtr)->SetBaseDataPath(baseGamePath);
+	win->AddMeshFromNif(&PreviewMod);
+	win->SetBaseDataPath(baseGamePath);
 
 	vector<string> shapeNames;
 	PreviewMod.GetShapeList(shapeNames);
 	for (auto s : shapeNames) {
-		(*winPtr)->AddNifShapeTexture(&PreviewMod, s);
-		(*winPtr)->Refresh();
+		win->AddNifShapeTexture(&PreviewMod, s);
+		win->Refresh();
 	}
 }
 
@@ -1305,6 +1314,7 @@ BodySlideFrame::BodySlideFrame(BodySlideApp* app, const wxString &title, const w
 	SetSize(size);
 	sw->SetScrollRate(5, 26);
 	sw->SetFocusIgnoringChildren();
+	sw->SetBackgroundColour(wxColor(0x40, 0x40, 0x40));
 	sw->Bind(wxEVT_ENTER_WINDOW, &BodySlideFrame::OnEnterSliderWindow, this);
 
 	wxString val = Config.GetCString("LastGroupFilter", "");
@@ -1347,7 +1357,7 @@ void BodySlideFrame::AddCategorySliderUI(const wxString& name, bool show, bool o
 	if (!oneSize) {
 		sliderLayout->AddSpacer(0);
 
-		w = new wxPanel(sw, -1, -1, -1, -1);
+		w = new wxPanel(sw);
 		w->SetBackgroundColour(wxColor(90, 90, 90));
 		sliderLayout->Add(w, 0, wxTOP | wxBOTTOM | wxEXPAND, 10);
 	}
@@ -1364,7 +1374,7 @@ void BodySlideFrame::AddCategorySliderUI(const wxString& name, bool show, bool o
 	sliderLayout->Add(w, 0, wxLEFT | wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 
 	if (!oneSize) {
-		w = new wxPanel(sw, -1, -1, -1, -1);
+		w = new wxPanel(sw);
 		w->SetBackgroundColour(wxColor(90, 90, 90));
 		sliderLayout->Add(w, 0, wxTOP | wxBOTTOM | wxEXPAND, 10);
 	}
@@ -1524,6 +1534,12 @@ void BodySlideFrame::SetSliderPosition(const wxString &name, float newValue, sho
 
 void BodySlideFrame::OnExit(wxCommandEvent& WXUNUSED(event)) {
 	Close(true);
+}
+
+void BodySlideFrame::OnClose(wxCloseEvent& event) {
+	app->ClosePreview(SMALL_PREVIEW);
+	app->ClosePreview(BIG_PREVIEW);
+	Destroy();
 }
 
 void BodySlideFrame::OnActivateFrame(wxActivateEvent& event) {
@@ -1823,9 +1839,9 @@ void BodySlideFrame::OnBuildBodies(wxCommandEvent& WXUNUSED(event)) {
 	if (cbRaceMenu)
 		tri = cbRaceMenu->IsChecked();
 
-	if (GetKeyState(VK_CONTROL) & 0x8000)
+	if (wxGetKeyState(WXK_CONTROL))
 		app->BuildBodies(true, false, tri);
-	else if (GetKeyState(VK_MENU) & 0x8000)
+	else if (wxGetKeyState(WXK_ALT))
 		app->BuildBodies(false, true, tri);
 	else
 		app->BuildBodies(false, false, tri);
@@ -1844,9 +1860,9 @@ void BodySlideFrame::OnBatchBuild(wxCommandEvent& WXUNUSED(event)) {
 	if (cbRaceMenu)
 		tri = cbRaceMenu->IsChecked();
 
-	if (GetKeyState(VK_CONTROL) & 0x8000)
+	if (wxGetKeyState(WXK_CONTROL))
 		custpath = true;
-	else if (GetKeyState(VK_MENU) & 0x8000) // Alt
+	else if (wxGetKeyState(WXK_ALT))
 		clean = true;
 
 	app->GetFilteredOutfits(outfitChoices);

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <set>
 #include <limits>
+#include <wx/msgdlg.h>
 #ifdef _DEBUG
 #pragma comment (lib, "SOIL_d.lib")
 #else
@@ -17,6 +18,7 @@ PFNWGLGETEXTENSIONSSTRINGARBPROC wglGetExtensionsStringArb = NULL;
 PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatArb = NULL;
 
 short GLSurface::multisampleState = 0;
+int GLSurface::numMultiSamples = 0;
 int GLSurface::pixelFormatMS = 0;
 
 
@@ -197,12 +199,11 @@ bool tri::IntersectSphere(vtx *vertref, vec3 &origin, float radius) {
 }
 
 GLSurface::GLSurface() {
-	hOwner = NULL;
-	hDC = NULL;
-	hRC = NULL;
 	mFov = 90.0f;
 	bEditMode = false;
 	bTextured = true;
+	bWireframe = false;
+	bLighting = true;
 	bMaskVisible = false;
 	bWeightColors = false;
 	cursorSize = 0.5f;
@@ -213,54 +214,78 @@ GLSurface::~GLSurface() {
 	Cleanup();
 }
 
-/* below code taken from NEHE's example vertex buffer code: http://nehe.gamedev.net/tutorial/vertex_buffer_objects/22002/ */
 bool GLSurface::IsExtensionSupported(char* szTargetExtension) {
+	// Note that there is a wxGLCanvas::IsExtensionSupported function,
+	// but it behaves like IsWGLExtensionSupported() below.
 	const unsigned char *pszExtensions = NULL;
 	const unsigned char *pszStart;
 	unsigned char *pszWhere, *pszTerminator;
 
 	// Get Extensions String
 	pszExtensions = glGetString(GL_EXTENSIONS);
+	if (!pszExtensions) {
+		GLint numExtensions = 0;
+		glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
+		return numExtensions < 0 ? true : false;
+	}
 
 	// Search The Extensions String For An Exact Copy
 	pszStart = pszExtensions;
 	for (;;) {
 		pszWhere = (unsigned char*)strstr((const char*)pszStart, szTargetExtension);
 		if (!pszWhere)
-			break;
+			return false;
 		pszTerminator = pszWhere + strlen(szTargetExtension);
 		if (pszWhere == pszStart || *(pszWhere - 1) == ' ')
 			if (*pszTerminator == ' ' || *pszTerminator == '\0')
 				return true;
 		pszStart = pszTerminator;
 	}
-	return false;
 }
 
 bool GLSurface::IsWGLExtensionSupported(char* szTargetExtension, HDC refDC) {
-	const char *pszExtensions = NULL;
-	const char *pszStart;
-	char *pszWhere, *pszTerminator;
-	wglGetExtensionsStringArb = (PFNWGLGETEXTENSIONSSTRINGARBPROC)wglGetProcAddress("wglGetExtensionsStringARB");
-	if (wglGetExtensionsStringArb == 0)
-		return false;
+	return wxGLCanvas::IsExtensionSupported(szTargetExtension);
+}
 
-	// Get Extensions String
-	pszExtensions = wglGetExtensionsStringArb(refDC);
+const int* GLSurface::GetGLAttribs(wxWindow* parent) {
+	static bool initialized{false};
+	static int attribs[] = {
+		WX_GL_RGBA,
+		WX_GL_DOUBLEBUFFER,
+		WX_GL_MIN_RED, 8,
+		WX_GL_MIN_BLUE, 8,
+		WX_GL_MIN_GREEN, 8,
+		WX_GL_MIN_ALPHA, 8,
+		WX_GL_DEPTH_SIZE, 16,
+		WX_GL_LEVEL, 0,
+		WX_GL_SAMPLE_BUFFERS, 1,
+		WX_GL_SAMPLES, 8,
+		0,
+	};
 
-	// Search The Extensions String For An Exact Copy
-	pszStart = pszExtensions;
-	for (;;) {
-		pszWhere = (char*)strstr((const char*)pszStart, szTargetExtension);
-		if (!pszWhere)
-			break;
-		pszTerminator = pszWhere + strlen(szTargetExtension);
-		if (pszWhere == pszStart || *(pszWhere - 1) == ' ')
-			if (*pszTerminator == ' ' || *pszTerminator == '\0')
-				return true;
-		pszStart = pszTerminator;
+	if (initialized)
+		return attribs;
+
+	// The main thing we want to query support for is multisampling.
+	// Unfortunately, wxWidgets has rather crappy support for querying this
+	// on Windows.  On Windows, this can't be queried without creating a
+	// window first.  The normal wxGLCanvas::IsDisplaySupported() function
+	// doesn't support querying multisampling at all.
+	//
+	// Therefore we still use the Windows-specific QueryMultisample code
+	// here.
+	HWND queryMSWndow = CreateWindowA("STATIC", "Multisampletester", WS_CHILD | SS_OWNERDRAW | SS_NOTIFY, 0, 0, 768, 768, parent->GetHWND(), 0, GetModuleHandle(NULL), NULL);
+	QueryMultisample(queryMSWndow);
+	DestroyWindow(queryMSWndow);
+	if (numMultiSamples == 0) {
+		// Disable WX_GL_SAMPLE_BUFFERS and WX_GL_SAMPLES
+		attribs[14] = 0;
+	} else {
+		attribs[17] = numMultiSamples;
 	}
-	return false;
+
+	initialized = true;
+	return attribs;
 }
 
 bool GLSurface::QueryMultisample(HWND queryWnd) {
@@ -269,7 +294,7 @@ bool GLSurface::QueryMultisample(HWND queryWnd) {
 
 	PIXELFORMATDESCRIPTOR pfd;
 
-	hDC = GetDC(queryWnd);
+	HDC hDC = GetDC(queryWnd);
 
 	pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
 	memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
@@ -285,7 +310,7 @@ bool GLSurface::QueryMultisample(HWND queryWnd) {
 	int format = ChoosePixelFormat(hDC, &pfd);
 	SetPixelFormat(hDC, format, &pfd);
 
-	hRC = wglCreateContext(hDC);
+	HGLRC hRC = wglCreateContext(hDC);
 	wglMakeCurrent(hDC, hRC);
 	if (IsWGLExtensionSupported("WGL_ARB_multisample", hDC)) {
 
@@ -315,7 +340,9 @@ bool GLSurface::QueryMultisample(HWND queryWnd) {
 		if (valid && numFormats >= 1) {
 			wglMakeCurrent(NULL, NULL);
 			wglDeleteContext(hRC);
+			ReleaseDC(queryWnd, hDC);
 			multisampleState = 1;
+			numMultiSamples = 8;
 			return true;
 		}
 		iAttributes[16] = 4;							// no good, try 4x
@@ -323,7 +350,9 @@ bool GLSurface::QueryMultisample(HWND queryWnd) {
 		if (valid && numFormats >= 1) {
 			wglMakeCurrent(NULL, NULL);
 			wglDeleteContext(hRC);
+			ReleaseDC(queryWnd, hDC);
 			multisampleState = 1;
+			numMultiSamples = 4;
 			return true;
 		}
 		iAttributes[16] = 2;							// no good, try 2x
@@ -331,7 +360,9 @@ bool GLSurface::QueryMultisample(HWND queryWnd) {
 		if (valid && numFormats >= 1) {
 			wglMakeCurrent(NULL, NULL);
 			wglDeleteContext(hRC);
+			ReleaseDC(queryWnd, hDC);
 			multisampleState = 1;
+			numMultiSamples = 2;
 			return true;
 		}
 
@@ -340,6 +371,7 @@ bool GLSurface::QueryMultisample(HWND queryWnd) {
 	wglDeleteContext(hRC);
 	ReleaseDC(queryWnd, hDC);
 	multisampleState = 2;
+	numMultiSamples = 0;
 	return false;
 }
 
@@ -387,6 +419,16 @@ void GLSurface::initMaterial(vec3 diffusecolor) {
 	glMaterialfv(GL_FRONT, GL_SHININESS, shiny);
 }
 
+int GLSurface::Initialize(wxGLCanvas* can, wxGLContext* ctx, bool bUseDefaultShaders) {
+	canvas = can;
+	context = ctx;
+
+	canvas->SetCurrent(*context);
+
+	InitGLExtensions();
+	return InitGLSettings(bUseDefaultShaders);
+}
+
 int GLSurface::Initialize(HWND parentWnd, bool bUseDefaultShaders) {
 	PIXELFORMATDESCRIPTOR pfd;
 
@@ -407,24 +449,30 @@ int GLSurface::Initialize(HWND parentWnd, bool bUseDefaultShaders) {
 		SetPixelFormat(hDC, format, &pfd);
 		hRC = wglCreateContext(hDC);
 		wglMakeCurrent(hDC, hRC);
-
 	}
 	else {
 		SetPixelFormat(hDC, pixelFormatMS, &pfd);
 		hRC = wglCreateContext(hDC);
 		wglMakeCurrent(hDC, hRC);
-		glEnable(GL_MULTISAMPLE_ARB);
 	}
 
+	InitGLExtensions();
+	return InitGLSettings(bUseDefaultShaders);
+}
+
+void GLSurface::InitGLExtensions() {
 	bUseAF = IsExtensionSupported("GL_EXT_texture_filter_anisotropic");
 	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largestAF);
 
 	glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)wglGetProcAddress("glEnableVertexAttribArray");
 	glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC)wglGetProcAddress("glVertexAttribPointer");
 	glDisableVertexAttribArray = (PFNGLDISABLEVERTEXATTRIBARRAYPROC)wglGetProcAddress("glDisableVertexAttribArray");
+}
 
-	bWireframe = false;
-	bLighting = true;
+int GLSurface::InitGLSettings(bool bUseDefaultShaders) {
+	if (multisampleState != 1)
+		glEnable(GL_MULTISAMPLE_ARB);
+
 	glShadeModel(GL_SMOOTH);
 
 	glClearDepth(1.0f);
@@ -477,7 +525,10 @@ void GLSurface::Cleanup() {
 }
 
 void GLSurface::Begin() {
-	wglMakeCurrent(hDC, hRC);
+	if (canvas)
+		canvas->SetCurrent(*context);
+	else
+		wglMakeCurrent(hDC, hRC);
 }
 
 void GLSurface::SetStartingView(vec3 camPos, unsigned int vpWidth, unsigned int vpHeight, float fov) {
@@ -860,7 +911,10 @@ int GLSurface::RenderOneFrame() {
 		RenderMesh(m);
 	}
 
-	SwapBuffers(hDC);
+	if (canvas)
+		canvas->SwapBuffers();
+	else
+		SwapBuffers(hDC);
 	return 0;
 }
 
