@@ -12,7 +12,6 @@ mesh::mesh() {
 	vertEdges = NULL;
 	bVisible = true;
 	textured = false;
-	MatRef = -1;
 	bBuffersLoaded = false;
 	rendermode = RenderMode::Normal;
 	doublesided = false;

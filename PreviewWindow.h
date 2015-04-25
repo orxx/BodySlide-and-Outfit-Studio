@@ -40,7 +40,7 @@ class PreviewWindow
 	HWND mGLWindow;
 	GLSurface gls;
 	void registerClass();
-	unordered_map<string, int> shapeTexIds;
+	unordered_map<string, GLMaterial*> shapeTextures;
 	string baseDataPath;
 
 public:
@@ -87,14 +87,14 @@ public:
 		if (!m)
 			return;
 
-		int mat;
+		GLMaterial* mat;
 		if (shaderType == 0)
 			mat = gls.AddMaterial(texturefile, "res\\defvshader.vs", "res\\defshader.fs");
 		else
 			mat = gls.AddMaterial(texturefile, "res\\defvshader.vs", "res\\skinshader.fs");
 
-		m->MatRef = mat;
-		shapeTexIds[shapeName] = mat;
+		m->material = mat;
+		shapeTextures[shapeName] = mat;
 	}
 
 	void Render() {
@@ -108,7 +108,7 @@ public:
 
 	void ToggleSmoothSeams() {
 		mesh* m;
-		for (auto s : shapeTexIds) {
+		for (auto s : shapeTextures) {
 			m = gls.GetMesh(s.first);
 			if (m) {
 				if (m->smoothSeamNormals)

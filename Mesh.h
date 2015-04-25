@@ -14,6 +14,8 @@ enum RenderMode {
 	LitWire
 };
 
+class GLMaterial;
+
 class mesh {
 public:
 	vtx* verts;
@@ -36,7 +38,7 @@ public:
 	bool doublesided;
 	bool textured;
 	vec2* texcoord;
-	int MatRef;					// Integer index to a material array.
+	GLMaterial* material{nullptr};
 
 	vec3* vcolors;				// Vertex colors.
 

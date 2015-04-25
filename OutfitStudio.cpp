@@ -3395,13 +3395,13 @@ void wxGLPanel::SetMeshTexture(const string& shapeName, const string& texturefil
 	if (!m)
 		return;
 
-	int mat;
+	GLMaterial* mat;
 	if (shaderType == 0)
 		mat = gls.AddMaterial(texturefile, "res\\maskvshader.vs", "res\\defshader.fs");
 	else
 		mat = gls.AddMaterial(texturefile, "res\\maskvshader.vs", "res\\skinshader.fs");
 
-	m->MatRef = mat;
+	m->material = mat;
 }
 
 void wxGLPanel::UpdateMeshVertices(const string& shapeName, vector<vector3>* verts, bool updateBVH) {

@@ -9,6 +9,7 @@
 #include "Object3d.h"
 #include "KDMatcher.h"
 #include "Mesh.h"
+#include "ResourceLoader.h"
 #include "TweakBrush.h"
 #include <string>
 #include <vector>
@@ -44,7 +45,9 @@ class GLSurface {
 	float defPointSize;
 	float cursorSize;
 
-	vector<GLMaterial*> materials;
+	ResourceLoader resLoader;
+	GLMaterial* noImage{nullptr};
+	GLMaterial* skinMaterial{nullptr};
 	unordered_map<string, int> texMats;
 
 	TweakUndo tweakUndo;
@@ -257,7 +260,7 @@ public:
 
 	RenderMode SetMeshRenderMode(const string& name, RenderMode mode);
 
-	int AddMaterial(const string& textureFile, const string& vShaderFile, const string& fShaderFile);
+	GLMaterial* AddMaterial(const string& textureFile, const string& vShaderFile, const string& fShaderFile);
 
 	int TestRender();
 	int RenderOneFrame();
@@ -270,8 +273,8 @@ public:
 			bTextured = true;
 
 		for (int i = 0; i < meshes.size(); i++)
-			if (meshes[i]->MatRef >= 0 && (activeMesh > -1))
-				materials[meshes[i]->MatRef]->shader->ShowTexture(bTextured);
+			if (meshes[i]->material && (activeMesh > -1))
+				meshes[i]->material->shader->ShowTexture(bTextured);
 	}
 
 	void ToggleWireframe() {
@@ -288,8 +291,8 @@ public:
 			bLighting = true;
 
 		for (int i = 0; i < meshes.size(); i++)
-			if (meshes[i]->MatRef >= 0 && (activeMesh > -1))
-				materials[meshes[i]->MatRef]->shader->EnableVertexLighting(bLighting);
+			if (meshes[i]->material && (activeMesh > -1))
+				meshes[i]->material->shader->EnableVertexLighting(bLighting);
 	}
 
 	void ToggleMask() {
@@ -299,16 +302,16 @@ public:
 			bMaskVisible = true;
 
 		for (int i = 0; i < meshes.size(); i++)
-			if (meshes[i]->MatRef >= 0 && (activeMesh > -1))
-				materials[meshes[i]->MatRef]->shader->ShowMask(bMaskVisible);
+			if (meshes[i]->material && (activeMesh > -1))
+				meshes[i]->material->shader->ShowMask(bMaskVisible);
 	}
 
 	void SetWeightColors(bool bVisible = true) {
 		bWeightColors = bVisible;
 
 		for (int i = 0; i < meshes.size(); i++)
-			if (meshes[i]->MatRef >= 0 && (activeMesh > -1))
-				materials[meshes[i]->MatRef]->shader->ShowWeight(bWeightColors);
+			if (meshes[i]->material && (activeMesh > -1))
+				meshes[i]->material->shader->ShowWeight(bWeightColors);
 	}
 
 	void ToggleWeightColors() {
@@ -317,7 +320,7 @@ public:
 		else
 			bWeightColors = true;
 
-		if (meshes.size() > 0 && (activeMesh > -1))
-			materials[meshes[activeMesh]->MatRef]->shader->ShowWeight(bWeightColors);
+		if (meshes.size() > 0 && (activeMesh > -1) && meshes[activeMesh]->material)
+			meshes[activeMesh]->material->shader->ShowWeight(bWeightColors);
 	}
 };

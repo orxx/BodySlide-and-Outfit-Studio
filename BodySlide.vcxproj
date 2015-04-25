@@ -126,6 +126,7 @@
     <ClCompile Include="OutfitStudio.cpp" />
     <ClCompile Include="PresetSaveDialog.cpp" />
     <ClCompile Include="PreviewWindow.cpp" />
+    <ClCompile Include="ResourceLoader.cpp" />
     <ClCompile Include="SliderCategories.cpp" />
     <ClCompile Include="SliderData.cpp" />
     <ClCompile Include="SliderGroup.cpp" />
@@ -163,6 +164,7 @@
     <ClInclude Include="PresetSaveDialog.h" />
     <ClInclude Include="PreviewWindow.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="ResourceLoader.h" />
     <ClInclude Include="SliderCategories.h" />
     <ClInclude Include="SliderData.h" />
     <ClInclude Include="SliderGroup.h" />

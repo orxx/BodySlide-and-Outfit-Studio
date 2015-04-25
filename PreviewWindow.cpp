@@ -109,8 +109,9 @@ void PreviewWindow::RefreshMeshFromNif(NifFile* nif, char* shapeName){
 			auto shader = nif->GetShaderForShape(shapeList[i]);
 			if (shader && m->smoothSeamNormals != false && !shader->IsSkinShader())
 				ToggleSmoothSeams(m);
-			if (shapeTexIds.find(shapeName) != shapeTexIds.end())
-				m->MatRef = shapeTexIds[shapeName];
+			auto iter = shapeTextures.find(shapeName);
+			if (iter != shapeTextures.end())
+				m->material = iter->second;
 			else
 				AddNifShapeTexture(nif, string(shapeName));
 
@@ -125,12 +126,11 @@ void PreviewWindow::RefreshMeshFromNif(NifFile* nif, char* shapeName){
 			auto shader = nif->GetShaderForShape(shapeList[i]);
 			if (shader && m->smoothSeamNormals != false && !shader->IsSkinShader())
 				ToggleSmoothSeams(m);
-			if (shapeTexIds.find(shapeList[i]) != shapeTexIds.end()) {
-				m->MatRef = shapeTexIds[shapeList[i]];
-			}
-			else {
+			auto iter = shapeTextures.find(shapeList[i]);
+			if (iter != shapeTextures.end())
+				m->material = iter->second;
+			else
 				AddNifShapeTexture(nif, shapeList[i]);
-			}
 		}
 	}
 	InvalidateRect(mGLWindow, NULL, FALSE);

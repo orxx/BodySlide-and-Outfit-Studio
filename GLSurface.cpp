@@ -463,8 +463,7 @@ int GLSurface::Initialize(HWND parentWnd, bool bUseDefaultShaders) {
 	initMaterial(vec3(0.8f, 0.8f, 0.8f));
 
 	if (bUseDefaultShaders) { //NoImg.png
-		AddMaterial("res\\NoImg.png", "res\\defvshader.vs", "res\\defshader.fs");
-		//AddMaterial("res\\femalebody_1.dds", "res\\defvshader.vs", "res\\skinshader.fs");
+		noImage = resLoader.AddMaterial("res\\NoImg.png", "res\\defvshader.vs", "res\\defshader.fs");
 	}
 
 	return 0;
@@ -477,8 +476,7 @@ void GLSurface::Cleanup() {
 	for (int i = 0; i < overlays.size(); i++)
 		delete overlays[i];
 
-	for (int i = 0; i < materials.size(); i++)
-		delete materials[i];
+	resLoader.Cleanup();
 
 	if (hRC) {
 		wglMakeCurrent(NULL, NULL);
@@ -896,27 +894,29 @@ void GLSurface::RenderMesh(mesh* m) {
 		glEnable(GL_LIGHTING);
 
 	if (m->rendermode == RenderMode::Normal || m->rendermode == RenderMode::LitWire) {
-		if (m->MatRef >= 0)
-			materials[m->MatRef]->shader->Begin();
+		if (m->material)
+			m->material->shader->Begin();
 
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glVertexPointer(3, GL_FLOAT, sizeof(vtx), &m->verts[0].x);
 		glEnableClientState(GL_NORMAL_ARRAY);
 		glNormalPointer(GL_FLOAT, sizeof(vtx), &m->verts[0].nx);
 
-		if (m->vcolors && bMaskVisible) {
-			glEnableVertexAttribArray(materials[m->MatRef]->shader->GetMaskAttribute());
-			glVertexAttribPointer(materials[m->MatRef]->shader->GetMaskAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), m->vcolors);
-		}
-		else
-			glDisableVertexAttribArray(materials[m->MatRef]->shader->GetMaskAttribute());
+		if (m->material) {
+			if (m->vcolors && bMaskVisible) {
+				glEnableVertexAttribArray(m->material->shader->GetMaskAttribute());
+				glVertexAttribPointer(m->material->shader->GetMaskAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), m->vcolors);
+			}
+			else
+				glDisableVertexAttribArray(m->material->shader->GetMaskAttribute());
 
-		if (m->vcolors && bWeightColors) {
-			glEnableVertexAttribArray(materials[m->MatRef]->shader->GetWeightAttribute());
-			glVertexAttribPointer(materials[m->MatRef]->shader->GetWeightAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), &m->vcolors[0].y);
+			if (m->vcolors && bWeightColors) {
+				glEnableVertexAttribArray(m->material->shader->GetWeightAttribute());
+				glVertexAttribPointer(m->material->shader->GetWeightAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), &m->vcolors[0].y);
+			}
+			else
+				glDisableVertexAttribArray(m->material->shader->GetWeightAttribute());
 		}
-		else
-			glDisableVertexAttribArray(materials[m->MatRef]->shader->GetWeightAttribute());
 
 		if (!m->vcolors)
 			initMaterial(m->color);
@@ -926,14 +926,17 @@ void GLSurface::RenderMesh(mesh* m) {
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-			if (bUseAF)
-				materials[m->MatRef]->ActivateTextures(m->texcoord, largestAF);
-			else
-				materials[m->MatRef]->ActivateTextures(m->texcoord);
+			if (m->material) {
+				if (bUseAF)
+					m->material->ActivateTextures(m->texcoord, largestAF);
+				else
+					m->material->ActivateTextures(m->texcoord);
+			}
 		}
 		else {
 			glDisable(GL_BLEND);
-			materials[m->MatRef]->DeactivateTextures();
+			if (m->material)
+				m->material->DeactivateTextures();
 		}
 		elemPtr = &m->tris[0].p1;
 
@@ -943,8 +946,8 @@ void GLSurface::RenderMesh(mesh* m) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		}
 		glDrawElements(GL_TRIANGLES, (m->nTris * 3), GL_UNSIGNED_SHORT, elemPtr);
-		if (m->MatRef >= 0)
-			materials[m->MatRef]->shader->End();
+		if (m->material)
+			m->material->shader->End();
 
 		if (bWireframe) {
 			glDisable(GL_LIGHTING);
@@ -1056,7 +1059,7 @@ void GLSurface::AddMeshExplicit(vector<vector3>* verts, vector<triangle>* tris, 
 			m->texcoord[i].v = (*uvs)[i].v;
 		}
 		m->textured = true;
-		m->MatRef = 1;
+		m->material = skinMaterial;
 	}
 
 	// Load tris. Also sum face normals here.
@@ -1176,10 +1179,10 @@ void GLSurface::AddMeshFromNif(NifFile* nif, string shapeName, vec3* color, bool
 			m->texcoord[i].v = (*nifUvs)[i].v;
 		}
 		m->textured = true;
-		if (isSkin && materials.size() > 1)
-			m->MatRef = 1;
+		if (isSkin)
+			m->material = skinMaterial;
 		else
-			m->MatRef = 0;
+			m->material = noImage;
 	}
 
 	if (!nifNorms) {
@@ -1903,20 +1906,13 @@ RenderMode GLSurface::SetMeshRenderMode(const string& name, RenderMode mode) {
 	return r;
 }
 
-int GLSurface::AddMaterial(const string& textureFile, const string& vShaderFile, const string& fShaderFile) {
-	string errstr;
-	string matName = textureFile + fShaderFile;
-	if (texMats.find(matName) != texMats.end()) {
-		return texMats[matName];
-	}
-	unsigned int texid1 = SOIL_load_OGL_texture(textureFile.c_str(), SOIL_LOAD_AUTO, 0, SOIL_FLAG_TEXTURE_REPEATS);
-	if (!texid1) {
-		errstr = SOIL_last_result();
-		return 0;
-	}
-	texMats[matName] = materials.size();
-	materials.push_back(new GLMaterial(texid1, vShaderFile.c_str(), fShaderFile.c_str()));
-	return materials.size() - 1;
+GLMaterial* GLSurface::AddMaterial(const string& textureFile, const string& vShaderFile, const string& fShaderFile) {
+	GLMaterial* mat = resLoader.AddMaterial(textureFile, vShaderFile, fShaderFile);
+	// Assume the first loaded material is always the skin material.
+	// (This seems like a hack, but matches the behavior of the old code.)
+	if (!skinMaterial)
+		skinMaterial = mat;
+	return mat;
 }
 
 void GLSurface::BeginEditMode() {
