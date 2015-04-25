@@ -3164,8 +3164,10 @@ void OutfitStudio::OnDeleteBone(wxCommandEvent& event) {
 	}
 
 	outfitBones->GetSelections(selItems);
-	if (selItems.size() > 0)
-		OnOutfitBoneSelect(wxTreeEvent(wxEVT_TREE_SEL_CHANGED, outfitBones, selItems[0]));
+	if (selItems.size() > 0) {
+		wxTreeEvent treeEvent(wxEVT_TREE_SEL_CHANGED, outfitBones, selItems[0]);
+		OnOutfitBoneSelect(treeEvent);
+	}
 }
 
 void OutfitStudio::OnCopyBoneWeight(wxCommandEvent& event) {

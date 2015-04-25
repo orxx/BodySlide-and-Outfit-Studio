@@ -225,15 +225,15 @@ public:
 	// the active mesh. Optionally, the ray and ray origin can be provided, which skips the internal call to GetPickRay.
 	// Screen x/y are ignored if the ray is provided.
 	bool CollideMesh(int ScreenX, int ScreenY, vec3& outOrigin, vec3& outNormal, int* outFacet = NULL, vec3* inRayDir = 0, vec3* inRayOrigin = 0);
-	bool CollidePlane(int ScreenX, int ScreenY, vec3& outOrigin, vec3& inPlaneNormal, float inPlaneDist);
+	bool CollidePlane(int ScreenX, int ScreenY, vec3& outOrigin, const vec3& inPlaneNormal, float inPlaneDist);
 	int CollideOverlay(int ScreenX, int ScreenY, vec3& outOrigin, vec3& outNormal, int* outFacet = NULL, vec3* inRayDir = 0, vec3* inRayOrigin = 0);
 
 	int AddVisRay(vec3& start, vec3& direction, float length);
-	int AddVisCircle(vec3& center, vec3& normal, float radius, const string& name = "RingMesh");
-	int AddVis3dRing(vec3& center, vec3& normal, float holeRadius, float ringRadius, vec3& color, const string& name = "XRotateMesh");
-	int AddVis3dArrow(vec3& origin, vec3& direction, float stemRadius, float pointRadius, float length, vec3& color, const string& name = "XMoveMesh");
-	int AddVisPoint(vec3& p, const string& name = "PointMesh");
-	int AddVisTri(vec3& p1, vec3& p2, vec3& p3, const string& name = "TriMesh");
+	int AddVisCircle(const vec3& center, const vec3& normal, float radius, const string& name = "RingMesh");
+	int AddVis3dRing(const vec3& center, const vec3& normal, float holeRadius, float ringRadius, const vec3& color, const string& name = "XRotateMesh");
+	int AddVis3dArrow(const vec3& origin, const vec3& direction, float stemRadius, float pointRadius, float length, const vec3& color, const string& name = "XMoveMesh");
+	int AddVisPoint(const vec3& p, const string& name = "PointMesh");
+	int AddVisTri(const vec3& p1, const vec3& p2, const vec3& p3, const string& name = "TriMesh");
 	int AddVisFacets(vector<int>& triIDs, const string& name = "TriMesh");
 	int AddVisFacetsInSphere(vec3& origin, float radius, const string& name = "SphereFIntersect");
 	int AddVisPointsInSphere(vec3& origin, float radius, const string& name = "SpherePIntersect");

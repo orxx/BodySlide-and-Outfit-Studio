@@ -103,7 +103,7 @@ public:
 	int GetAdjacentUnvisitedPoints(int querypoint, int outPoints[], int maxPoints, bool* visPoint);
 
 	// Creates the vertex color array (if necessary) and sets all the colors to the provided value.
-	void ColorFill(vec3& color);
+	void ColorFill(const vec3& color);
 
 	void ColorChannelFill(int channel, float value);
 

@@ -139,14 +139,14 @@ void PreviewWindow::RefreshMeshFromNif(NifFile* nif, char* shapeName){
 void PreviewWindow::AddNifShapeTexture(NifFile* fromNif, const string& shapeName) {
 	int shader;
 	string texFile;
-	fromNif->GetTextureForShape((string)shapeName, texFile, 0);
-	auto sb = fromNif->GetShaderForShape((string)shapeName);
+	fromNif->GetTextureForShape(shapeName, texFile, 0);
+	auto sb = fromNif->GetShaderForShape(shapeName);
 	if (sb && sb->IsSkinShader())
 		shader = 1;
 	else
 		shader = 0;
 
-	SetShapeTexture((string)shapeName, baseDataPath + "textures\\" + texFile, shader);
+	SetShapeTexture(shapeName, baseDataPath + "textures\\" + texFile, shader);
 }
 
 void PreviewWindow::Create(const string& title) {

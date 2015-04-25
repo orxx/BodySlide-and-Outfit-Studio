@@ -82,7 +82,7 @@ public:
 		InvalidateRect(mGLWindow, NULL, FALSE);
 	}
 
-	void SetShapeTexture(string& shapeName, const string& texturefile, int shaderType = 0) {
+	void SetShapeTexture(const string& shapeName, const string& texturefile, int shaderType = 0) {
 		mesh* m = gls.GetMesh(shapeName);
 		if (!m)
 			return;

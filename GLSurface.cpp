@@ -20,24 +20,10 @@ short GLSurface::multisampleState = 0;
 int GLSurface::pixelFormatMS = 0;
 
 
-vec3::vec3(vtx& other) {
+vec3::vec3(const vtx& other) {
 	x = other.x;
 	y = other.y;
 	z = other.z;
-}
-
-vec3& vec3::operator =(const vtx& other) {
-	x = other.x;
-	y = other.y;
-	z = other.z;
-	return (*this);
-}
-
-vec3& vec3::operator += (const vtx& other) {
-	x += other.x;
-	y += other.y;
-	z += other.z;
-	return (*this);
 }
 
 tri::tri() {
@@ -667,7 +653,7 @@ int GLSurface::CollideOverlay(int ScreenX, int ScreenY, vec3& outOrigin, vec3& o
 	return collided;
 }
 
-bool GLSurface::CollidePlane(int ScreenX, int ScreenY, vec3& outOrigin, vec3& inPlaneNormal, float inPlaneDist) {
+bool GLSurface::CollidePlane(int ScreenX, int ScreenY, vec3& outOrigin, const vec3& inPlaneNormal, float inPlaneDist) {
 	vec3 o;
 	vec3 d;
 	GetPickRay(ScreenX, ScreenY, d, o);
@@ -1496,7 +1482,7 @@ int  GLSurface::AddVisRay(vec3& start, vec3& direction, float length) {
 	return overlays.size() - 1;
 }
 
-int GLSurface::AddVisPoint(vec3& p, const string& name) {
+int GLSurface::AddVisPoint(const vec3& p, const string& name) {
 	mesh* m;
 	int pmesh = GetOverlayID(name);
 	if (pmesh >= 0) {
@@ -1528,7 +1514,7 @@ int GLSurface::AddVisPoint(vec3& p, const string& name) {
 	return overlays.size() - 1;
 }
 
-int  GLSurface::AddVisTri(vec3& p1, vec3& p2, vec3& p3, const string& name) {
+int  GLSurface::AddVisTri(const vec3& p1, const vec3& p2, const vec3& p3, const string& name) {
 	mesh* m;
 	int trimesh = GetOverlayID(name);
 	if (trimesh >= 0) {
@@ -1573,7 +1559,7 @@ int  GLSurface::AddVisTri(vec3& p1, vec3& p2, vec3& p3, const string& name) {
 	return meshes.size() - 1;
 }
 
-int  GLSurface::AddVisCircle(vec3& center, vec3& normal, float radius, const string& name) {
+int  GLSurface::AddVisCircle(const vec3& center, const vec3& normal, float radius, const string& name) {
 	Mat4 rotMat;
 	int ringMesh = GetOverlayID(name);
 	if (ringMesh >= 0) {
@@ -1623,7 +1609,7 @@ int  GLSurface::AddVisCircle(vec3& center, vec3& normal, float radius, const str
 	return ringMesh;
 }
 
-int GLSurface::AddVis3dRing(vec3& center, vec3& normal, float holeRadius, float ringRadius, vec3& color, const string& name) {
+int GLSurface::AddVis3dRing(const vec3& center, const vec3& normal, float holeRadius, float ringRadius, const vec3& color, const string& name) {
 	int myMesh = GetOverlayID(name);
 	if (myMesh >= 0) {
 		delete overlays[myMesh];
@@ -1724,7 +1710,7 @@ int GLSurface::AddVis3dRing(vec3& center, vec3& normal, float holeRadius, float 
 }
 
 
-int GLSurface::AddVis3dArrow(vec3& origin, vec3& direction, float stemRadius, float pointRadius, float length, vec3& color, const string& name) {
+int GLSurface::AddVis3dArrow(const vec3& origin, const vec3& direction, float stemRadius, float pointRadius, float length, const vec3& color, const string& name) {
 	Mat4 rotMat;
 
 	int myMesh = GetOverlayID(name);

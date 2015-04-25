@@ -140,7 +140,7 @@ public:
 		shader = new GLShader(vertShaderProg, fragShaderProg);
 	}
 
-	void ActivateTextures(vec2* pTexCoord, GLfloat largestAF = NULL) {
+	void ActivateTextures(vec2* pTexCoord, GLfloat largestAF = 0) {
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, texRef[0]);
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);

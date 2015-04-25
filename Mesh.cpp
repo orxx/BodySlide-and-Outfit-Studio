@@ -365,7 +365,7 @@ void mesh::FacetNormals() {
 	}
 }
 
-void mesh::ColorFill(vec3& color) {
+void mesh::ColorFill(const vec3& color) {
 	if (!vcolors)
 		vcolors = new vec3[nVerts];
 
