@@ -1,9 +1,9 @@
 #pragma once
 #include <Windows.h>
-#include <gl/GL.h>
-#include <gl/GLU.h>
-#include <gl/glext.h>
-#include <gl/wglext.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glext.h>
+#include <GL/wglext.h>
 #include "GLShader.h"
 #include "NifFile.h"
 #include "Object3d.h"

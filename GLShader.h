@@ -1,8 +1,8 @@
 #pragma once
 #include "stdafx.h"
-#include <gl/GL.h>
-#include <gl/GLU.h>
-#include <gl/glext.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glext.h>
 #include <string>
 #include <fstream>
 #include "Object3d.h"
