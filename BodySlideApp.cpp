@@ -1,4 +1,5 @@
 #include "BodySlideApp.h"
+#include "XmlFinder.h"
 
 ConfigurationManager Config;
 
@@ -163,47 +164,25 @@ void BodySlideApp::RefreshOutfitList() {
 }
 
 int BodySlideApp::LoadSliderSets() {
-	WIN32_FIND_DATAA wfd;
-	HANDLE hfind;
-	string filename;
-	DWORD searchStatus = 0;
-	vector<string> outfitNames;
-
 	dataSets.Clear();
 	outfitNameSource.clear();
 	outfitNameOrder.clear();
 
-	hfind = FindFirstFileA("SliderSets\\*.xml", &wfd);
+	XmlFinder finder("SliderSets");
+	while (!finder.atEnd()) {
+		string filename = finder.next();
+		SliderSetFile sliderDoc;
+		sliderDoc.Open(filename);
 
-	if (hfind == INVALID_HANDLE_VALUE)
-		return 3;
-
-	while (searchStatus != ERROR_NO_MORE_FILES) {
-		if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+		if (sliderDoc.fail())
 			continue;
-		}
-		else {
-			filename = "SliderSets\\";
-			filename += wfd.cFileName;
-
-			SliderSetFile sliderDoc;
-			sliderDoc.Open(filename);
-
-			if (!sliderDoc.fail()) {
-				sliderDoc.GetSetNamesUnsorted(outfitNames, false);
-				for (int i = 0; i < outfitNames.size(); i++) {
-					outfitNameSource[outfitNames[i]] = filename;
-					outfitNameOrder.push_back(outfitNames[i]);
-				}
-			}
-
-			if (!FindNextFileA(hfind, &wfd))
-				searchStatus = GetLastError();
-			else
-				searchStatus = 0;
+		vector<string> outfitNames;
+		sliderDoc.GetSetNamesUnsorted(outfitNames, false);
+		for (int i = 0; i < outfitNames.size(); i++) {
+			outfitNameSource[outfitNames[i]] = filename;
+			outfitNameOrder.push_back(outfitNames[i]);
 		}
 	}
-	FindClose(hfind);
 
 	ungroupedOutfits.clear();
 	for (auto o : outfitNameSource) {
