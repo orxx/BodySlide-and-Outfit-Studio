@@ -500,6 +500,8 @@ void BodySlideApp::ShowPreview(char PreviewType) {
 		else if (zapIdx.size() > 0) {
 			// Preview Window has been opened for this shape before, zap the diff verts before applying them to the shape
 			for (int z = zapIdx.size() - 1; z >= 0; z--) {
+				if (zapIdx[z] >= verts.size())
+					continue;
 				verts.erase(verts.begin() + zapIdx[z]);
 				uvs.erase(uvs.begin() + zapIdx[z]);
 			}
@@ -551,6 +553,8 @@ void BodySlideApp::UpdatePreview(char PreviewType) {
 		// Zap deleted verts before applying to the shape
 		if (zapIdx.size() > 0) {
 			for (int z = zapIdx.size() - 1; z >= 0; z--) {
+				if (zapIdx[z] >= verts.size())
+					continue;
 				verts.erase(verts.begin() + zapIdx[z]);
 				uv.erase(uv.begin() + zapIdx[z]);
 			}
