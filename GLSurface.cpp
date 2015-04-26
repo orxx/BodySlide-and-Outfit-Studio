@@ -889,19 +889,26 @@ void GLSurface::RenderMesh(mesh* m) {
 		glNormalPointer(GL_FLOAT, sizeof(vtx), &m->verts[0].nx);
 
 		if (m->material) {
-			if (m->vcolors && bMaskVisible) {
-				glEnableVertexAttribArray(m->material->shader->GetMaskAttribute());
-				glVertexAttribPointer(m->material->shader->GetMaskAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), m->vcolors);
+			auto maskAttrib = m->material->shader->GetMaskAttribute();
+			if (maskAttrib != -1) {
+				if (m->vcolors && bMaskVisible) {
+					glEnableVertexAttribArray(maskAttrib);
+					glVertexAttribPointer(maskAttrib, 1, GL_FLOAT, GL_FALSE, sizeof(vec3), m->vcolors);
+				}
+				else {
+					glDisableVertexAttribArray(maskAttrib);
+				}
 			}
-			else
-				glDisableVertexAttribArray(m->material->shader->GetMaskAttribute());
 
-			if (m->vcolors && bWeightColors) {
-				glEnableVertexAttribArray(m->material->shader->GetWeightAttribute());
-				glVertexAttribPointer(m->material->shader->GetWeightAttribute(), 1, GL_FLOAT, GL_FALSE, sizeof(vec3), &m->vcolors[0].y);
+			auto weightAttrib = m->material->shader->GetWeightAttribute();
+			if (weightAttrib != -1) {
+				if (m->vcolors && bWeightColors) {
+					glEnableVertexAttribArray(weightAttrib);
+					glVertexAttribPointer(weightAttrib, 1, GL_FLOAT, GL_FALSE, sizeof(vec3), &m->vcolors[0].y);
+				}
+				else
+					glDisableVertexAttribArray(weightAttrib);
 			}
-			else
-				glDisableVertexAttribArray(m->material->shader->GetWeightAttribute());
 		}
 
 		if (!m->vcolors)
