@@ -196,7 +196,7 @@ OutfitStudio::OutfitStudio(wxWindow* parent, const wxPoint& pos, const wxSize& s
 		SetAcceleratorTable(accel);
 
 		*/
-	glView = new wxGLPanel(p, wxDefaultSize);
+	glView = new wxGLPanel(p, wxDefaultSize, GLSurface::GetGLAttribs(this));
 	glView->SetNotifyWindow(this);
 
 	rsrc->AttachUnknownControl("mGLView", glView, this);
@@ -315,7 +315,7 @@ void OutfitStudio::createSliderGUI(const string& name, int id, wxScrolledWindow*
 	d->paneSz->Add(d->slider, 1, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT | wxEXPAND, 5);
 
 	d->sliderReadoutID = 1200;
-	d->sliderReadout = new wxTextCtrl(d->sliderPane, 1200 + id, wxT("0%"), wxDefaultPosition, wxSize(40, -1), wxWANTS_CHARS | wxTE_RIGHT | wxSIMPLE_BORDER, wxDefaultValidator, name + "|readout");
+	d->sliderReadout = new wxTextCtrl(d->sliderPane, 1200 + id, wxT("0%"), wxDefaultPosition, wxSize(40, -1), wxWANTS_CHARS | wxTE_RIGHT | wxTE_PROCESS_ENTER | wxSIMPLE_BORDER, wxDefaultValidator, name + "|readout");
 	d->sliderReadout->SetMaxLength(0);
 	d->sliderReadout->SetForegroundColour(wxColour(255, 255, 255));
 	d->sliderReadout->SetBackgroundColour(wxColour(48, 48, 48));
@@ -3277,7 +3277,7 @@ void OutfitStudio::OnBuildSkinPartitions(wxCommandEvent& event) {
 // wxGLPanel
 // ---------------------------------------------------------------------------
 
-BEGIN_EVENT_TABLE(wxGLPanel, wxPanel)
+BEGIN_EVENT_TABLE(wxGLPanel, wxGLCanvas)
 	EVT_PAINT(wxGLPanel::OnPaint)
 	EVT_ERASE_BACKGROUND(wxGLPanel::OnEraseBackground)
 	EVT_SIZE(wxGLPanel::OnSize)
@@ -3295,19 +3295,8 @@ BEGIN_EVENT_TABLE(wxGLPanel, wxPanel)
 	EVT_MOUSE_CAPTURE_LOST(wxGLPanel::OnCaptureLost)
 END_EVENT_TABLE()
 
-wxGLPanel::wxGLPanel(wxWindow* parent, const wxSize& size) : wxPanel(parent, -1, wxDefaultPosition, size) {
-	HWND pHwnd;
-	pHwnd = (HWND)parent->GetHWND();
-	if (!gls.MultiSampleQueried()) {
-		HWND queryMSWndow = CreateWindowA("STATIC", "Multisampletester", WS_CHILD | SS_OWNERDRAW | SS_NOTIFY, 0, 0, 768, 768, pHwnd, 0, GetModuleHandle(NULL), NULL);
-		gls.QueryMultisample(queryMSWndow);
-		DestroyWindow(queryMSWndow);
-	}
-
-	gls.Initialize((HWND)GetHWND(), false);
-	gls.SetStartingView(vec3(0.0f, -5.0f, -15.0f), 768, 768, 65.0f);
-	gls.ToggleMask();
-
+wxGLPanel::wxGLPanel(wxWindow* parent, const wxSize& size, const int* attribs) : wxGLCanvas(parent, wxID_ANY, attribs, wxDefaultPosition, size, wxFULL_REPAINT_ON_RESIZE) {
+	context = new wxGLContext(this);
 	rbuttonDown = false;
 	lbuttonDown = false;
 	mbuttonDown = false;
@@ -3331,6 +3320,13 @@ wxGLPanel::wxGLPanel(wxWindow* parent, const wxSize& size) : wxPanel(parent, -1,
 	bConnectedEdit = false;
 
 	strokeManager = &baseStrokes;
+}
+
+void wxGLPanel::OnShown() {
+	gls.Initialize(this, context, false);
+	auto size = GetSize();
+	gls.SetStartingView(vec3(0.0f, -5.0f, -15.0f), size.GetWidth(), size.GetHeight(), 65.0f);
+	gls.ToggleMask();
 }
 
 void wxGLPanel::SetNotifyWindow(wxWindow* win) {
@@ -3473,7 +3469,7 @@ void wxGLPanel::OnKeys(wxKeyEvent& event) {
 	event.Skip();
 }
 
-bool wxGLPanel::StartBrushStroke(wxPoint& screenPos) {
+bool wxGLPanel::StartBrushStroke(const wxPoint& screenPos) {
 	OutfitStudio* os = (OutfitStudio*)notifyWindow;
 	vec3 o;
 	vec3 n;
@@ -3564,7 +3560,7 @@ bool wxGLPanel::StartBrushStroke(wxPoint& screenPos) {
 	return true;
 }
 
-void wxGLPanel::UpdateBrushStroke(wxPoint& screenPos) {
+void wxGLPanel::UpdateBrushStroke(const wxPoint& screenPos) {
 	vec3 o;
 	vec3 n;
 	vec3 v;
@@ -3643,7 +3639,7 @@ void wxGLPanel::EndBrushStroke() {
 	}
 }
 
-bool wxGLPanel::StartTransform(wxPoint& screenPos) {
+bool wxGLPanel::StartTransform(const wxPoint& screenPos) {
 	TweakPickInfo tpi;
 	int meshHit = gls.CollideOverlay(screenPos.x, screenPos.y, tpi.origin, tpi.normal, &tpi.facet);
 	if (meshHit == -1) {
@@ -3722,7 +3718,7 @@ bool wxGLPanel::StartTransform(wxPoint& screenPos) {
 	return true;
 }
 
-void wxGLPanel::UpdateTransform(wxPoint& screenPos) {
+void wxGLPanel::UpdateTransform(const wxPoint& screenPos) {
 	TweakPickInfo tpi;
 	vec3 pn;
 	float pd;
@@ -3860,6 +3856,16 @@ void wxGLPanel::OnIdle(wxIdleEvent& event) {
 }
 
 void wxGLPanel::OnPaint(wxPaintEvent& event) {
+	// Initialize OpenGL the first time the window is painted.
+	// We unfortunately can't initialize it before the window is shown.
+	// We could register for the EVT_SHOW event, but unfortunately it
+	// appears to only be called after the first few EVT_PAINT events.
+	// It also isn't supported on all platforms.
+	if (firstPaint) {
+		firstPaint = false;
+		OnShown();
+	}
+
 	gls.RenderOneFrame();
 	event.Skip();
 }
